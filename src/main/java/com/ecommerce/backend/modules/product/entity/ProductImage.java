@@ -1,17 +1,19 @@
 package com.ecommerce.backend.modules.product.entity;
 
+import com.ecommerce.backend.common.utils.Tsid;
 import jakarta.persistence.*;
 
 @Entity
 public class ProductImage {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Tsid
     private Long id;
 
-    private String url;
+    private String imageUrl;
 
-    private String color;
+    private int displayOrder;
+    private Boolean isPrimary;
 
     @ManyToOne
     @JoinColumn(name = "product_id")
