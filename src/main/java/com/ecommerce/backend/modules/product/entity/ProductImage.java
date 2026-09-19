@@ -4,6 +4,7 @@ import com.ecommerce.backend.common.utils.Tsid;
 import jakarta.persistence.*;
 
 @Entity
+@Table(name = "product_images")
 public class ProductImage {
 
     @Id
