@@ -1,6 +1,6 @@
-package com.ecommerce.backend.modules.inventory_history;
+package com.ecommerce.backend.modules.inventory.repository;
 
-import com.ecommerce.backend.modules.inventory_history.entity.InventoryHistory;
+import com.ecommerce.backend.modules.inventory.entity.InventoryHistory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

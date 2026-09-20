@@ -1,8 +1,7 @@
-package com.ecommerce.backend.modules.inventory_history.entity;
+package com.ecommerce.backend.modules.inventory.entity;
 
 import com.ecommerce.backend.common.utils.Tsid;
-import com.ecommerce.backend.modules.inventory.entity.Inventory;
-import com.ecommerce.backend.modules.inventory_history.enums.InventoryAction;
+import com.ecommerce.backend.modules.inventory.enums.InventoryAction;
 import jakarta.persistence.*;
 import lombok.*;
 

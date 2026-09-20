@@ -1,4 +1,4 @@
-package com.ecommerce.backend.modules.inventory;
+package com.ecommerce.backend.modules.inventory.repository;
 
 import com.ecommerce.backend.modules.inventory.entity.Inventory;
 import org.springframework.data.jpa.repository.JpaRepository;
