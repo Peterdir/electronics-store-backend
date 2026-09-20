@@ -1,0 +1,13 @@
+package com.ecommerce.backend.modules.inventory_history;
+
+import com.ecommerce.backend.modules.inventory_history.entity.InventoryHistory;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface InventoryHistoryRepository extends JpaRepository<InventoryHistory, Long> {
+
+    List<InventoryHistory> findByInventoryProductVariantProductIdOrderByCreatedAtDesc(Long productId);
+}
