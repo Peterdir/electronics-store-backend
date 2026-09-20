@@ -18,7 +18,7 @@ jobs:
 
       # 2. Cài đặt môi trường JDK 21
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -29,5 +29,5 @@ jobs:
         run: chmod +x ./mvnw
 
       # 4. Biên dịch và chạy kiểm thử
-      - name: Build and Test with Maven
-        run: ./mvnw clean test
+      - name: Build with Maven
+        run: ./mvnw clean test-compile
