@@ -15,4 +15,6 @@ public class CategoryRequest {
     private String name;
 
     private CategoryStatus status;
+
+    private String logo;
 }

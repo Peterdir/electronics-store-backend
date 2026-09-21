@@ -15,4 +15,6 @@ public class BrandRequest {
     private String name;
 
     private BrandStatus status;
+
+    private String logo;
 }
