@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface InventoryHistoryRepository extends JpaRepository<InventoryHistory, Long> {
 
-    List<InventoryHistory> findByInventoryProductVariantProductIdOrderByCreatedAtDesc(Long productId);
+    List<InventoryHistory> findByInventoryIdOrderByCreatedAtDesc(Long inventoryId);
 }

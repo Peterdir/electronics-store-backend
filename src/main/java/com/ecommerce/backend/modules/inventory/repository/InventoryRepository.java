@@ -15,8 +15,8 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
             WHERE (:keyword IS NULL OR LOWER(i.productVariant.product.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
                 AND (:minQuantity IS NULL OR i.quantity >= :minQuantity)
                 AND (:maxQuantity IS NULL OR i.quantity <= :maxQuantity)
-           """)
-    List<Inventory> findByCriteria(@Param("keyword") String keyword,@Param("minQuantity") Long minQuantity,
-                                   @Param("maxQuantity") Long maxQuantity);
+            """)
+    List<Inventory> findByCriteria(@Param("keyword") String keyword, @Param("minQuantity") Long minQuantity,
+            @Param("maxQuantity") Long maxQuantity);
 
 }
