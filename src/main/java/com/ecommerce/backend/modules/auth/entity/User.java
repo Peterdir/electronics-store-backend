@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "users")
 @Getter
@@ -30,5 +32,17 @@ public class User {
     @Column(nullable = false)
     private UserStatus status;
 
+    private Instant createdAt;
+    private Instant updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        createdAt = Instant.now();
+        updatedAt = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
+    }
 }
