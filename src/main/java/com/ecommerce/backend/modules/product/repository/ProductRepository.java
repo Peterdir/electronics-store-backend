@@ -2,6 +2,8 @@ package com.ecommerce.backend.modules.product.repository;
 
 import com.ecommerce.backend.modules.product.entity.Product;
 import com.ecommerce.backend.modules.product.enums.ProductStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -26,4 +28,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     List<Product> findTop5ByNameContaining(String keyword);
 
     List<Product> findAllByIdIn(List<Long> productIds);
+
+    Page<Product> findByNameContainingIgnoreCaseAndStatus(String keyword, ProductStatus status, Pageable pageable);
 }
