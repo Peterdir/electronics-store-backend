@@ -28,6 +28,15 @@ jobs:
       - name: Make Maven Wrapper executable
         run: chmod +x ./mvnw
 
-      # 4. Biên dịch và chạy kiểm thử
-      - name: Build with Maven
-        run: ./mvnw clean test-compile
+      # 4. Biên dịch và chạy kiểm thử (Unit Tests)
+      - name: Build and Run Tests with Maven
+        run: ./mvnw clean test
+
+      # 5. Lưu lại Test Report để xem chi tiết khi có lỗi
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v4
+        if: always() # Luôn chạy bước này dù test có pass hay fail
+        with:
+          name: surefire-test-reports
+          path: target/surefire-reports/
+          retention-days: 7
