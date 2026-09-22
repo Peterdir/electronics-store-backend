@@ -1,13 +1,16 @@
 package com.ecommerce.backend.modules.brand.controller;
 
+import com.ecommerce.backend.common.utils.FileValidator;
 import com.ecommerce.backend.modules.brand.dto.request.BrandRequest;
 import com.ecommerce.backend.modules.brand.dto.response.BrandResponse;
 import com.ecommerce.backend.modules.brand.service.BrandService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -26,17 +29,28 @@ public class BrandController {
         return ResponseEntity.ok(brandService.getAllBrands());
     }
 
-    @PostMapping
-    public ResponseEntity<BrandResponse> createBrand(@Valid @RequestBody BrandRequest request) {
-        BrandResponse response = brandService.createBrand(request);
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BrandResponse> createBrand(
+            @Valid @ModelAttribute BrandRequest request,
+            @RequestPart("logo") MultipartFile logoFile) {
+
+        FileValidator.validateImageFile(logoFile);
+
+        BrandResponse response = brandService.createBrand(request, logoFile);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<BrandResponse> updateBrand(
             @PathVariable Long id,
-            @Valid @RequestBody BrandRequest request) {
-        return ResponseEntity.ok(brandService.updateBrand(id, request));
+            @Valid @ModelAttribute BrandRequest request,
+            @RequestPart(value = "logo", required = false) MultipartFile logoFile) {
+
+        if (logoFile != null && !logoFile.isEmpty()) {
+            FileValidator.validateImageFile(logoFile);
+        }
+
+        return ResponseEntity.ok(brandService.updateBrand(id, request, logoFile));
     }
 
     @DeleteMapping("/{id}")
@@ -45,3 +59,4 @@ public class BrandController {
         return ResponseEntity.noContent().build();
     }
 }
+

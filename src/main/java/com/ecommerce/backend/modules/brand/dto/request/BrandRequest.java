@@ -11,10 +11,8 @@ import lombok.*;
 @Builder
 public class BrandRequest {
 
-    @NotBlank
+    @NotBlank(message = "Brand name is required.")
     private String name;
 
     private BrandStatus status;
-
-    private String logo;
 }

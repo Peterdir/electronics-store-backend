@@ -14,7 +14,6 @@ public class BrandMapper {
         return Brand.builder()
                 .name(request.getName())
                 .status(request.getStatus())
-                .logo(request.getLogo())
                 .build();
     }
 
