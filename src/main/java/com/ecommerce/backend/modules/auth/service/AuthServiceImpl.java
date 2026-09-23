@@ -4,10 +4,12 @@ import com.ecommerce.backend.common.exception.BadRequestException;
 import com.ecommerce.backend.common.exception.DuplicateResourceException;
 import com.ecommerce.backend.common.exception.ResourceNotFoundException;
 import com.ecommerce.backend.common.service.MailService;
+import com.ecommerce.backend.modules.auth.dto.request.LoginRequest;
 import com.ecommerce.backend.modules.auth.dto.request.RegisterRequest;
 import com.ecommerce.backend.modules.auth.dto.request.ResendVerificationRequest;
 import com.ecommerce.backend.modules.auth.dto.response.AuthResponse;
 import com.ecommerce.backend.modules.auth.dto.response.MessageResponse;
+import com.ecommerce.backend.modules.auth.dto.response.UserResponse;
 import com.ecommerce.backend.modules.auth.entity.User;
 import com.ecommerce.backend.modules.auth.enums.UserStatus;
 import com.ecommerce.backend.modules.auth.repository.UserRepository;
@@ -109,6 +111,38 @@ public class AuthServiceImpl implements AuthService {
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .tokenType("Bearer")
+                .build();
+    }
+
+    @Override
+    public AuthResponse login(LoginRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid email or password."));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new BadRequestException("Invalid email or password.");
+        }
+
+        if (user.getStatus() == UserStatus.PENDING) {
+            throw new BadRequestException("This account is not verified yet. Please check your email.");
+        }
+
+        if (user.getStatus() == UserStatus.INACTIVE) {
+            throw new BadRequestException("This account has been locked. Please contact support");
+        }
+
+        String token = jwtService.generateToken(user);
+
+        UserResponse userResponse = UserResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .status(user.getStatus())
+                .build();
+
+        return AuthResponse.builder()
+                .accessToken(token)
+                .tokenType("Bearer")
+                .user(userResponse)
                 .build();
     }
 

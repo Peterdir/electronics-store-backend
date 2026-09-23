@@ -1,5 +1,6 @@
 package com.ecommerce.backend.modules.auth.controller;
 
+import com.ecommerce.backend.modules.auth.dto.request.LoginRequest;
 import com.ecommerce.backend.modules.auth.dto.request.RegisterRequest;
 import com.ecommerce.backend.modules.auth.dto.request.ResendVerificationRequest;
 import com.ecommerce.backend.modules.auth.dto.response.AuthResponse;
@@ -34,5 +35,11 @@ public class AuthController {
     public ResponseEntity<MessageResponse> resendVerification(
             @Valid @RequestBody ResendVerificationRequest request) {
         return ResponseEntity.ok(authService.resendVerification(request));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(
+            @Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 }
