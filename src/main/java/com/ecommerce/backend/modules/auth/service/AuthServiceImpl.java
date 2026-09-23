@@ -16,16 +16,23 @@ import com.ecommerce.backend.modules.auth.repository.UserRepository;
 import com.ecommerce.backend.security.JwtService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -33,6 +40,7 @@ public class AuthServiceImpl implements AuthService {
     private final StringRedisTemplate redisTemplate;
     private final MailService mailService;
     private final JwtService jwtService;
+    private final JwtDecoder jwtDecoder;
 
     private static final String VERIFY_TOKEN_PREFIX = "verify:";
     private static final long TOKEN_EXPIRY_HOURS = 24;
@@ -144,6 +152,34 @@ public class AuthServiceImpl implements AuthService {
                 .tokenType("Bearer")
                 .user(userResponse)
                 .build();
+    }
+
+    @Override
+    public void logout(String token) {
+        try {
+
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+
+            Jwt jwt = jwtDecoder.decode(token);
+            Instant expiresAt = jwt.getExpiresAt();
+
+            if (expiresAt != null) {
+                long timeToLive = Duration.between(Instant.now(), expiresAt).toMillis();
+
+                if (timeToLive > 0) {
+                    redisTemplate.opsForValue().set(
+                            "blacklist:" + token,
+                            "logged_out",
+                            timeToLive,
+                            TimeUnit.MILLISECONDS
+                    );
+                }
+            }
+        } catch (JwtException e) {
+            log.debug("Logout called with invalid or expired token: {}", e.getMessage());
+        }
     }
 
     private void sendVerificationToken(String email) {

@@ -14,4 +14,6 @@ public interface AuthService {
     MessageResponse resendVerification(ResendVerificationRequest request);
 
     AuthResponse login(LoginRequest request);
+
+    void logout(String token);
 }
