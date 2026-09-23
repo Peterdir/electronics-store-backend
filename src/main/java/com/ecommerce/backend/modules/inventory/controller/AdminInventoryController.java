@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/inventory")
+@RequestMapping("/api/admin/inventory")
 @RequiredArgsConstructor
-public class InventoryController {
+public class AdminInventoryController {
 
     private final InventoryService inventoryService;
 
