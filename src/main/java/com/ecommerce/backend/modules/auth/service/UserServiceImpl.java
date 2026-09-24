@@ -1,7 +1,9 @@
 package com.ecommerce.backend.modules.auth.service;
 
 import com.ecommerce.backend.common.exception.ResourceNotFoundException;
+import com.ecommerce.backend.modules.auth.dto.request.UpdateProfileRequest;
 import com.ecommerce.backend.modules.auth.dto.response.UserAdminResponse;
+import com.ecommerce.backend.modules.auth.dto.response.UserProfileResponse;
 import com.ecommerce.backend.modules.auth.entity.User;
 import com.ecommerce.backend.modules.auth.enums.UserStatus;
 import com.ecommerce.backend.modules.auth.repository.UserRepository;
@@ -45,6 +47,32 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         return mapToResponse(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserProfileResponse getUserProfile(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        return UserProfileResponse.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void updateUserProfile(Long id, UpdateProfileRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+        
+        userRepository.save(user);
     }
 
     private UserAdminResponse mapToResponse(User user) {

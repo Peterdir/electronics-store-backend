@@ -20,6 +20,7 @@ public class ProductImage {
     private String imageUrl;
 
     private int displayOrder;
+
     private Boolean isPrimary;
 
     @ManyToOne
