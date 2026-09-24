@@ -1,6 +1,7 @@
 package com.ecommerce.backend.modules.auth.entity;
 
 import com.ecommerce.backend.common.utils.Tsid;
+import com.ecommerce.backend.modules.auth.enums.Role;
 import com.ecommerce.backend.modules.auth.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
@@ -31,6 +32,15 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserStatus status;
+
+    @Column(name = "full_name")
+    private String fullName;
+
+    @Column(name = "phone")
+    private String phone;
+
+    @Enumerated(EnumType.STRING)
+    private Role role = Role.CUSTOMER;
 
     private Instant createdAt;
     private Instant updatedAt;

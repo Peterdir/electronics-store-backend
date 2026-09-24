@@ -25,6 +25,7 @@ public class JwtService {
                 .expiresAt(now.plus(24, ChronoUnit.HOURS))
                 .subject(String.valueOf(user.getId()))
                 .claim("email", user.getEmail())
+                .claim("role", user.getRole().name())
                 .build();
 
         return jwtEncoder.encode(JwtEncoderParameters.from(claims))
