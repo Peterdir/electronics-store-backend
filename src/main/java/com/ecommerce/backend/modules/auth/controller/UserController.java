@@ -1,5 +1,6 @@
 package com.ecommerce.backend.modules.auth.controller;
 
+import com.ecommerce.backend.modules.auth.dto.request.ChangePasswordRequest;
 import com.ecommerce.backend.modules.auth.dto.request.UpdateProfileRequest;
 import com.ecommerce.backend.modules.auth.dto.response.MessageResponse;
 import com.ecommerce.backend.modules.auth.dto.response.UserProfileResponse;
@@ -11,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.Objects;
 
 @RestController
@@ -35,5 +37,14 @@ public class UserController {
         return ResponseEntity.ok(MessageResponse.builder()
                 .message("Profile updated successfully.")
                 .build());
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<String> changePassword(@RequestBody @Valid ChangePasswordRequest request, Principal principal) {
+        String email = principal.getName();
+
+        userService.changePassword(email, request);
+
+        return ResponseEntity.ok("Password changed successfully.");
     }
 }

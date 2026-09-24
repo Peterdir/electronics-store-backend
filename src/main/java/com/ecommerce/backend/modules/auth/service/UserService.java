@@ -1,5 +1,6 @@
 package com.ecommerce.backend.modules.auth.service;
 
+import com.ecommerce.backend.modules.auth.dto.request.ChangePasswordRequest;
 import com.ecommerce.backend.modules.auth.dto.request.UpdateProfileRequest;
 import com.ecommerce.backend.modules.auth.dto.response.UserAdminResponse;
 import com.ecommerce.backend.modules.auth.dto.response.UserProfileResponse;
@@ -22,4 +23,7 @@ public interface UserService {
 
     // Cập nhật thông tin cá nhân
     void updateUserProfile(Long id, UpdateProfileRequest request);
+
+    // Cập nhật mật khẩu tài khoản
+    void changePassword(String email, ChangePasswordRequest request);
 }
