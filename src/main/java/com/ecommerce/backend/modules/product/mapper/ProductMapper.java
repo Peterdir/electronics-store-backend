@@ -109,7 +109,7 @@ public class ProductMapper {
                     .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
                     .map(ProductImage::getImageUrl)
                     .findFirst()
-                    .orElse(product.getProductImages().getFirst().getImageUrl());
+                    .orElse(product.getProductImages().get(0).getImageUrl());
         }
 
         return primaryImageUrl;
