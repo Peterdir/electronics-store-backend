@@ -4,6 +4,7 @@ import com.ecommerce.backend.modules.inventory.dto.response.InventoryHistoryResp
 import com.ecommerce.backend.modules.inventory.dto.response.InventoryResponse;
 import com.ecommerce.backend.modules.inventory.entity.Inventory;
 import com.ecommerce.backend.modules.inventory.entity.InventoryHistory;
+import com.ecommerce.backend.modules.inventory.enums.InventoryStatus;
 import com.ecommerce.backend.modules.product.entity.Product;
 import com.ecommerce.backend.modules.product.entity.ProductVariant;
 import org.springframework.stereotype.Component;
@@ -47,13 +48,13 @@ public class InventoryMapper {
                 .build();
     }
 
-    private String calculateStatus(Long quantity) {
+    private InventoryStatus calculateStatus(Long quantity) {
         if (quantity == null || quantity <= 0) {
-            return "OUT_OF_STOCK";
+            return InventoryStatus.OUT_OF_STOCK;
         }
         if (quantity <= 10) {
-            return "LOW_STOCK";
+            return InventoryStatus.LOW_STOCK;
         }
-        return "IN_STOCK";
+        return InventoryStatus.IN_STOCK;
     }
 }

@@ -32,8 +32,8 @@ public class InventoryServiceImpl implements InventoryService {
         return inventoryRepository.findByCriteria(keyword, minQuantity, maxQuantity).stream()
                 .map(inventoryMapper::toResponse)
                 .filter(res -> status == null || status.isBlank()
-                        || res.getStatus().equalsIgnoreCase(status.trim())
-                        || res.getStatus().replace("_", " ").equalsIgnoreCase(status.trim()))
+                        || res.getStatus().name().equalsIgnoreCase(status.trim())
+                        || res.getStatus().name().replace("_", " ").equalsIgnoreCase(status.trim()))
                 .toList();
     }
 
