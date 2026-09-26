@@ -29,4 +29,16 @@ public class MailService {
 
         mailSender.send(message);
     }
+
+    public void sendPasswordResetEmail(String toEmail, String token) {
+        String verifyUrl = baseUrl + "/api/auth/reset-password?token=" + token;
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromAddress);
+        message.setTo(toEmail);
+        message.setSubject("Reset password");
+        message.setText("Click this link to reset password your account: " + verifyUrl);
+
+        mailSender.send(message);
+    }
 }

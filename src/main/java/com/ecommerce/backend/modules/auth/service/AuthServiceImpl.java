@@ -4,6 +4,7 @@ import com.ecommerce.backend.common.exception.BadRequestException;
 import com.ecommerce.backend.common.exception.DuplicateResourceException;
 import com.ecommerce.backend.common.exception.ResourceNotFoundException;
 import com.ecommerce.backend.common.service.MailService;
+import com.ecommerce.backend.modules.auth.dto.request.ForgotPasswordRequest;
 import com.ecommerce.backend.modules.auth.dto.request.LoginRequest;
 import com.ecommerce.backend.modules.auth.dto.request.RegisterRequest;
 import com.ecommerce.backend.modules.auth.dto.request.ResendVerificationRequest;
@@ -182,6 +183,23 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    @Override
+    public MessageResponse forgotPassword(ForgotPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("Email not found."));
+
+        String token = UUID.randomUUID().toString();
+        String redisKey = "reset_password:" + token;
+
+        redisTemplate.opsForValue().set(redisKey, user.getEmail(), 1, TimeUnit.HOURS);
+
+        mailService.sendPasswordResetEmail(request.getEmail(), token);
+
+        return MessageResponse.builder()
+                .message("If the email is registered, a reset link has been sent. Please check your email")
+                .build();
+    }
+
     private void sendVerificationToken(String email) {
         String token = UUID.randomUUID().toString();
         String redisKey = VERIFY_TOKEN_PREFIX + token;
@@ -191,5 +209,4 @@ public class AuthServiceImpl implements AuthService {
 
         mailService.sendVerificationEmail(email, token);
     }
-
 }

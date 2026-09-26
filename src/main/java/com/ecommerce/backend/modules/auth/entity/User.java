@@ -33,10 +33,8 @@ public class User {
     @Column(nullable = false)
     private UserStatus status;
 
-    @Column(name = "full_name")
     private String fullName;
 
-    @Column(name = "phone")
     private String phone;
 
     @Enumerated(EnumType.STRING)

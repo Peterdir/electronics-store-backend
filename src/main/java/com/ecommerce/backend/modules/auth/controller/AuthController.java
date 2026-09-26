@@ -1,5 +1,6 @@
 package com.ecommerce.backend.modules.auth.controller;
 
+import com.ecommerce.backend.modules.auth.dto.request.ForgotPasswordRequest;
 import com.ecommerce.backend.modules.auth.dto.request.LoginRequest;
 import com.ecommerce.backend.modules.auth.dto.request.RegisterRequest;
 import com.ecommerce.backend.modules.auth.dto.request.ResendVerificationRequest;
@@ -49,5 +50,10 @@ public class AuthController {
         return ResponseEntity.ok(MessageResponse.builder()
                 .message("You have successfully logged out.")
                 .build());
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<MessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return ResponseEntity.ok(authService.forgotPassword(request));
     }
 }
