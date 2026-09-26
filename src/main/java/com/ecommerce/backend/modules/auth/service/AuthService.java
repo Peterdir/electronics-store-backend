@@ -1,9 +1,6 @@
 package com.ecommerce.backend.modules.auth.service;
 
-import com.ecommerce.backend.modules.auth.dto.request.ForgotPasswordRequest;
-import com.ecommerce.backend.modules.auth.dto.request.LoginRequest;
-import com.ecommerce.backend.modules.auth.dto.request.RegisterRequest;
-import com.ecommerce.backend.modules.auth.dto.request.ResendVerificationRequest;
+import com.ecommerce.backend.modules.auth.dto.request.*;
 import com.ecommerce.backend.modules.auth.dto.response.AuthResponse;
 import com.ecommerce.backend.modules.auth.dto.response.MessageResponse;
 
@@ -19,4 +16,6 @@ public interface AuthService {
     void logout(String token);
 
     MessageResponse forgotPassword(ForgotPasswordRequest request);
+
+    MessageResponse resetPassword(ResetPasswordRequest request);
 }

@@ -1,9 +1,6 @@
 package com.ecommerce.backend.modules.auth.controller;
 
-import com.ecommerce.backend.modules.auth.dto.request.ForgotPasswordRequest;
-import com.ecommerce.backend.modules.auth.dto.request.LoginRequest;
-import com.ecommerce.backend.modules.auth.dto.request.RegisterRequest;
-import com.ecommerce.backend.modules.auth.dto.request.ResendVerificationRequest;
+import com.ecommerce.backend.modules.auth.dto.request.*;
 import com.ecommerce.backend.modules.auth.dto.response.AuthResponse;
 import com.ecommerce.backend.modules.auth.dto.response.MessageResponse;
 import com.ecommerce.backend.modules.auth.service.AuthService;
@@ -55,5 +52,10 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ResponseEntity<MessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         return ResponseEntity.ok(authService.forgotPassword(request));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<MessageResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        return ResponseEntity.ok(authService.resetPassword(request));
     }
 }

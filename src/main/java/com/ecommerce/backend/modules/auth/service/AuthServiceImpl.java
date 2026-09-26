@@ -4,10 +4,7 @@ import com.ecommerce.backend.common.exception.BadRequestException;
 import com.ecommerce.backend.common.exception.DuplicateResourceException;
 import com.ecommerce.backend.common.exception.ResourceNotFoundException;
 import com.ecommerce.backend.common.service.MailService;
-import com.ecommerce.backend.modules.auth.dto.request.ForgotPasswordRequest;
-import com.ecommerce.backend.modules.auth.dto.request.LoginRequest;
-import com.ecommerce.backend.modules.auth.dto.request.RegisterRequest;
-import com.ecommerce.backend.modules.auth.dto.request.ResendVerificationRequest;
+import com.ecommerce.backend.modules.auth.dto.request.*;
 import com.ecommerce.backend.modules.auth.dto.response.AuthResponse;
 import com.ecommerce.backend.modules.auth.dto.response.MessageResponse;
 import com.ecommerce.backend.modules.auth.dto.response.UserResponse;
@@ -188,6 +185,10 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("Email not found."));
 
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BadRequestException("Account is not active.");
+        }
+
         String token = UUID.randomUUID().toString();
         String redisKey = "reset_password:" + token;
 
@@ -197,6 +198,36 @@ public class AuthServiceImpl implements AuthService {
 
         return MessageResponse.builder()
                 .message("If the email is registered, a reset link has been sent. Please check your email")
+                .build();
+    }
+
+    @Override
+    public MessageResponse resetPassword(ResetPasswordRequest request) {
+        String email = redisTemplate.opsForValue().get("reset_password:" + request.getToken());
+
+        if (email == null) {
+            throw new BadRequestException("This link has expired or is invalid.");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Email not found."));
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BadRequestException("Account is not active.");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BadRequestException("Passwords do not match.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+
+        userRepository.save(user);
+
+        redisTemplate.delete("reset_password:" + request.getToken());
+
+        return MessageResponse.builder()
+                .message("Password reset successfully.")
                 .build();
     }
 
