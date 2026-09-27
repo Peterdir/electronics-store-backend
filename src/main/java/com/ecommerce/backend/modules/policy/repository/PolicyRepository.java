@@ -1,4 +1,4 @@
-package com.ecommerce.backend.modules.policy;
+package com.ecommerce.backend.modules.policy.repository;
 
 import com.ecommerce.backend.modules.policy.entity.Policy;
 import com.ecommerce.backend.modules.policy.enums.PolicyStatus;

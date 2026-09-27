@@ -1,7 +1,7 @@
 package com.ecommerce.backend.modules.policy.service;
 
 import com.ecommerce.backend.common.exception.ResourceNotFoundException;
-import com.ecommerce.backend.modules.policy.PolicyRepository;
+import com.ecommerce.backend.modules.policy.repository.PolicyRepository;
 import com.ecommerce.backend.modules.policy.dto.response.PolicyResponse;
 import com.ecommerce.backend.modules.policy.entity.Policy;
 import com.ecommerce.backend.modules.policy.enums.PolicyStatus;

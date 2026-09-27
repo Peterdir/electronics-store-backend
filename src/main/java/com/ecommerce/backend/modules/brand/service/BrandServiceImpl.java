@@ -4,7 +4,7 @@ import com.ecommerce.backend.common.exception.BadRequestException;
 import com.ecommerce.backend.common.exception.DuplicateResourceException;
 import com.ecommerce.backend.common.exception.ResourceNotFoundException;
 import com.ecommerce.backend.common.service.FileStorageService;
-import com.ecommerce.backend.modules.brand.BrandRepository;
+import com.ecommerce.backend.modules.brand.repository.BrandRepository;
 import com.ecommerce.backend.modules.brand.dto.request.BrandRequest;
 import com.ecommerce.backend.modules.brand.dto.response.BrandResponse;
 import com.ecommerce.backend.modules.brand.entity.Brand;

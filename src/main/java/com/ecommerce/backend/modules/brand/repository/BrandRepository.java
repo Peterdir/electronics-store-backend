@@ -1,4 +1,4 @@
-package com.ecommerce.backend.modules.brand;
+package com.ecommerce.backend.modules.brand.repository;
 
 import com.ecommerce.backend.modules.brand.entity.Brand;
 import org.springframework.data.jpa.repository.JpaRepository;

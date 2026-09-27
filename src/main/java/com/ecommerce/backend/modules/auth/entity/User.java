@@ -1,6 +1,7 @@
 package com.ecommerce.backend.modules.auth.entity;
 
 import com.ecommerce.backend.common.utils.Tsid;
+import com.ecommerce.backend.modules.address.entity.Address;
 import com.ecommerce.backend.modules.auth.enums.Role;
 import com.ecommerce.backend.modules.auth.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -8,6 +9,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -53,4 +56,8 @@ public class User {
     protected void onUpdate() {
         updatedAt = Instant.now();
     }
+
+    @OneToMany(mappedBy = "user")
+    @Builder.Default
+    private List<Address> addresses = new ArrayList<>();
 }

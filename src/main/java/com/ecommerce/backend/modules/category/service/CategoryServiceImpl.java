@@ -3,7 +3,7 @@ package com.ecommerce.backend.modules.category.service;
 import com.ecommerce.backend.common.exception.BadRequestException;
 import com.ecommerce.backend.common.exception.DuplicateResourceException;
 import com.ecommerce.backend.common.exception.ResourceNotFoundException;
-import com.ecommerce.backend.modules.category.CategoryRepository;
+import com.ecommerce.backend.modules.category.repository.CategoryRepository;
 import com.ecommerce.backend.modules.category.dto.request.CategoryRequest;
 import com.ecommerce.backend.modules.category.dto.response.CategoryResponse;
 import com.ecommerce.backend.modules.category.entity.Category;
