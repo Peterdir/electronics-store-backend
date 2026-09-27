@@ -11,12 +11,14 @@ import com.ecommerce.backend.modules.brand.entity.Brand;
 import com.ecommerce.backend.modules.brand.mapper.BrandMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class BrandServiceImpl implements BrandService {
 
     private final BrandRepository brandRepository;

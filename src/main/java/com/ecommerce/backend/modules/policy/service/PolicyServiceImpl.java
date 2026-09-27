@@ -8,9 +8,11 @@ import com.ecommerce.backend.modules.policy.enums.PolicyStatus;
 import com.ecommerce.backend.modules.policy.mapper.PolicyMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PolicyServiceImpl implements PolicyService {
 
     private final PolicyRepository policyRepository;
