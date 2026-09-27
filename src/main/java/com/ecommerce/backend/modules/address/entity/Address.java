@@ -32,7 +32,7 @@ public class Address {
 
     private Boolean isDefault;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 }

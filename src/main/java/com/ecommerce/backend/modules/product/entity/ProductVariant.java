@@ -39,11 +39,11 @@ public class ProductVariant {
 
     private ProductStatus status;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @OneToOne(mappedBy = "productVariant", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "productVariant", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Inventory inventory;
 
     @OneToMany(mappedBy = "productVariant")

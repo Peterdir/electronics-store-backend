@@ -34,7 +34,7 @@ public class InventoryHistory {
 
     private Instant createdAt;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inventory_id")
     private Inventory inventory;
 

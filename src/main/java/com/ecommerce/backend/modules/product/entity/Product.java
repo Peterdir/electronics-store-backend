@@ -47,7 +47,7 @@ public class Product {
 
     private Instant updatedAt;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
 
@@ -55,7 +55,7 @@ public class Product {
     @Builder.Default
     private List<ProductImage> productImages = new ArrayList<>();
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "brand_id")
     private Brand brand;
 

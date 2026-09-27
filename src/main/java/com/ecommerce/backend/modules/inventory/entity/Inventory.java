@@ -26,7 +26,7 @@ public class Inventory {
 
     private Instant updatedAt;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_variant_id", nullable = false, unique = true)
     private ProductVariant productVariant;
 
