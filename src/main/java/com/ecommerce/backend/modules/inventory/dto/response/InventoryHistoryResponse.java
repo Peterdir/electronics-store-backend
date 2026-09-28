@@ -1,4 +1,4 @@
-﻿package com.ecommerce.backend.modules.inventory.dto.response;
+package com.ecommerce.backend.modules.inventory.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 

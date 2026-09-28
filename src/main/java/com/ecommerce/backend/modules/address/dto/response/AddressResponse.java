@@ -1,9 +1,7 @@
-﻿package com.ecommerce.backend.modules.address.dto.response;
+package com.ecommerce.backend.modules.address.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 @Data

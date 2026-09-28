@@ -1,4 +1,4 @@
-﻿package com.ecommerce.backend.modules.policy.entity;
+package com.ecommerce.backend.modules.policy.entity;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 

@@ -1,4 +1,4 @@
-﻿package com.ecommerce.backend.modules.auth.dto.response;
+package com.ecommerce.backend.modules.auth.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
