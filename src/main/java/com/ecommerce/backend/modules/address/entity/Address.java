@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.address.entity;
+﻿package com.ecommerce.backend.modules.address.entity;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.common.utils.Tsid;
 import com.ecommerce.backend.modules.auth.entity.User;
@@ -16,6 +18,7 @@ public class Address {
 
     @Id
     @Tsid
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     private String fullName;

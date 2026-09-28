@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.inventory.entity;
+﻿package com.ecommerce.backend.modules.inventory.entity;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.common.utils.Tsid;
 import com.ecommerce.backend.modules.inventory.enums.InventoryAction;
@@ -18,10 +20,12 @@ public class InventoryHistory {
 
     @Id
     @Tsid
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     private InventoryAction action;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long userId;
 
     private String performedBy;
@@ -38,5 +42,5 @@ public class InventoryHistory {
     @JoinColumn(name = "inventory_id")
     private Inventory inventory;
 
-    // Thiếu UserId
+    // Thiáº¿u UserId
 }

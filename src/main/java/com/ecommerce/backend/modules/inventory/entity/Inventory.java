@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.inventory.entity;
+﻿package com.ecommerce.backend.modules.inventory.entity;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.common.utils.Tsid;
 import com.ecommerce.backend.modules.product.entity.ProductVariant;
@@ -20,6 +22,7 @@ public class Inventory {
 
     @Id
     @Tsid
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     private Long quantity;

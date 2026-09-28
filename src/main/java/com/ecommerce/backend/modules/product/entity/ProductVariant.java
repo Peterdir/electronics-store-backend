@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.product.entity;
+﻿package com.ecommerce.backend.modules.product.entity;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.common.utils.Tsid;
 import com.ecommerce.backend.modules.inventory.entity.Inventory;
@@ -25,6 +27,7 @@ public class ProductVariant {
 
     @Id
     @Tsid
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     private String sku;

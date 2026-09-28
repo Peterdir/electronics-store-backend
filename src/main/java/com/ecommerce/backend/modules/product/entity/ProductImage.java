@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.product.entity;
+﻿package com.ecommerce.backend.modules.product.entity;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.common.utils.Tsid;
 import jakarta.persistence.*;
@@ -15,6 +17,7 @@ public class ProductImage {
 
     @Id
     @Tsid
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     private String imageUrl;

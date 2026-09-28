@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.cart.entity;
+﻿package com.ecommerce.backend.modules.cart.entity;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.common.utils.Tsid;
 import com.ecommerce.backend.modules.product.entity.ProductVariant;
@@ -20,6 +22,7 @@ public class CartItem {
 
     @Id
     @Tsid
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)

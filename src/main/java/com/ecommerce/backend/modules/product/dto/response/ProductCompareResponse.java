@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.product.dto.response;
+﻿package com.ecommerce.backend.modules.product.dto.response;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 
 import lombok.*;
@@ -13,6 +15,7 @@ import java.util.Map;
 @Builder
 public class ProductCompareResponse {
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     private String name;

@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.policy.dto.response;
+﻿package com.ecommerce.backend.modules.policy.dto.response;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.modules.policy.enums.PolicyStatus;
 import com.ecommerce.backend.modules.policy.enums.PolicyType;
@@ -14,6 +16,7 @@ import java.time.Instant;
 @Builder
 public class PolicyResponse {
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     private String title;

@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.policy.entity;
+﻿package com.ecommerce.backend.modules.policy.entity;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.common.utils.Tsid;
 import com.ecommerce.backend.modules.policy.enums.PolicyStatus;
@@ -21,6 +23,7 @@ public class Policy {
 
     @Id
     @Tsid
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     private String title;

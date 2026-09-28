@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.brand.entity;
+﻿package com.ecommerce.backend.modules.brand.entity;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.common.utils.Tsid;
 import com.ecommerce.backend.modules.brand.enums.BrandStatus;
@@ -21,6 +23,7 @@ public class Brand {
 
     @Id
     @Tsid
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     private String name;

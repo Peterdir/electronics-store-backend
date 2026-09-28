@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.category.entity;
+﻿package com.ecommerce.backend.modules.category.entity;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.common.utils.Tsid;
 import com.ecommerce.backend.modules.category.enums.CategoryStatus;
@@ -21,6 +23,7 @@ public class Category {
 
     @Id
     @Tsid
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     private String name;

@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.brand.dto.response;
+﻿package com.ecommerce.backend.modules.brand.dto.response;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.modules.brand.enums.BrandStatus;
 import lombok.*;
@@ -12,6 +14,7 @@ import java.time.Instant;
 @Builder
 public class BrandResponse {
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     private String name;

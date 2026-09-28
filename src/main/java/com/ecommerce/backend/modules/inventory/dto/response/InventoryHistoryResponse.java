@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.inventory.dto.response;
+﻿package com.ecommerce.backend.modules.inventory.dto.response;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.modules.inventory.enums.InventoryAction;
 import lombok.*;
@@ -12,6 +14,7 @@ import java.time.Instant;
 @Builder
 public class InventoryHistoryResponse {
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     private InventoryAction action;

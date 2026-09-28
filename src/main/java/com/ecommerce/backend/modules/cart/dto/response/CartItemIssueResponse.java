@@ -1,4 +1,6 @@
-package com.ecommerce.backend.modules.cart.dto.response;
+﻿package com.ecommerce.backend.modules.cart.dto.response;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 import lombok.*;
 
@@ -9,8 +11,10 @@ import lombok.*;
 @Builder
 public class CartItemIssueResponse {
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long cartItemId;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long productVariantId;
 
     private String productName;
