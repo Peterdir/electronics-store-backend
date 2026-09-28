@@ -9,6 +9,7 @@ import com.ecommerce.backend.modules.auth.dto.response.AuthResponse;
 import com.ecommerce.backend.modules.auth.dto.response.MessageResponse;
 import com.ecommerce.backend.modules.auth.dto.response.UserResponse;
 import com.ecommerce.backend.modules.auth.entity.User;
+import com.ecommerce.backend.modules.auth.enums.Role;
 import com.ecommerce.backend.modules.auth.enums.UserStatus;
 import com.ecommerce.backend.modules.auth.repository.UserRepository;
 import com.ecommerce.backend.security.JwtService;
@@ -57,9 +58,15 @@ public class AuthServiceImpl implements AuthService {
             User user = existingUser.get();
 
             if (user.getStatus() == UserStatus.PENDING) {
-                throw new DuplicateResourceException("This account is pending verification.");
-            }
-            else {
+                user.setPassword(passwordEncoder.encode(request.getPassword()));
+                user.setRole(Role.CUSTOMER);
+                userRepository.save(user);
+                sendVerificationToken(user.getEmail());
+                
+                return MessageResponse.builder()
+                        .message("Registration updated. Please check your email to verify your account.")
+                        .build();
+            } else {
                 throw new DuplicateResourceException("This email is already registered.");
             }
         }

@@ -41,6 +41,7 @@ public class User {
     private String phone;
 
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Role role = Role.CUSTOMER;
 
     private Instant createdAt;
