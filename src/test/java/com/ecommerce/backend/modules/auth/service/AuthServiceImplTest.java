@@ -90,7 +90,10 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Register: Should fail when passwords do not match")
     void register_Fail_PasswordMismatch() {
-        RegisterRequest request = new RegisterRequest("test@example.com", "password123", "password321");
+        RegisterRequest request = new RegisterRequest();
+        request.setEmail("test@example.com");
+        request.setPassword("password123");
+        request.setConfirmPassword("password321");
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> authService.register(request));
         assertThat(ex.getMessage()).isEqualTo("Passwords do not match");
@@ -99,7 +102,11 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Register: Should fail when email is already registered and active")
     void register_Fail_AlreadyRegistered() {
-        RegisterRequest request = new RegisterRequest("active@example.com", "password", "password");
+        RegisterRequest request = new RegisterRequest();
+        request.setEmail("active@example.com");
+        request.setPassword("password");
+        request.setConfirmPassword("password");
+        
         when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(activeUser));
 
         DuplicateResourceException ex = assertThrows(DuplicateResourceException.class, () -> authService.register(request));
@@ -109,7 +116,10 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Register: Should update and resend verification if user is pending")
     void register_Success_PendingUser() {
-        RegisterRequest request = new RegisterRequest("pending@example.com", "new_password", "new_password");
+        RegisterRequest request = new RegisterRequest();
+        request.setEmail("pending@example.com");
+        request.setPassword("new_password");
+        request.setConfirmPassword("new_password");
         
         when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(pendingUser));
         when(passwordEncoder.encode(anyString())).thenReturn("encoded_new_password");
@@ -125,7 +135,10 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Register: Should create new user successfully")
     void register_Success_NewUser() {
-        RegisterRequest request = new RegisterRequest("new@example.com", "password", "password");
+        RegisterRequest request = new RegisterRequest();
+        request.setEmail("new@example.com");
+        request.setPassword("password");
+        request.setConfirmPassword("password");
         
         when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.empty());
         when(passwordEncoder.encode(anyString())).thenReturn("encoded_password");
@@ -145,7 +158,10 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Login: Should fail on invalid email")
     void login_Fail_InvalidEmail() {
-        LoginRequest request = new LoginRequest("wrong@example.com", "password");
+        LoginRequest request = new LoginRequest();
+        request.setEmail("wrong@example.com");
+        request.setPassword("password");
+        
         when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.empty());
 
         ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class, () -> authService.login(request));
@@ -155,7 +171,10 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Login: Should fail on wrong password")
     void login_Fail_WrongPassword() {
-        LoginRequest request = new LoginRequest("active@example.com", "wrong_password");
+        LoginRequest request = new LoginRequest();
+        request.setEmail("active@example.com");
+        request.setPassword("wrong_password");
+        
         when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(activeUser));
         when(passwordEncoder.matches("wrong_password", "encoded_password")).thenReturn(false);
 
@@ -166,7 +185,10 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Login: Should fail if user is pending")
     void login_Fail_PendingUser() {
-        LoginRequest request = new LoginRequest("pending@example.com", "password");
+        LoginRequest request = new LoginRequest();
+        request.setEmail("pending@example.com");
+        request.setPassword("password");
+        
         when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(pendingUser));
         when(passwordEncoder.matches("password", "encoded_password")).thenReturn(true);
 
@@ -177,7 +199,10 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Login: Should return token on successful login")
     void login_Success() {
-        LoginRequest request = new LoginRequest("active@example.com", "password");
+        LoginRequest request = new LoginRequest();
+        request.setEmail("active@example.com");
+        request.setPassword("password");
+        
         when(userRepository.findByEmail(request.getEmail())).thenReturn(Optional.of(activeUser));
         when(passwordEncoder.matches("password", "encoded_password")).thenReturn(true);
         when(jwtService.generateToken(activeUser)).thenReturn("mocked.jwt.token");
@@ -244,7 +269,9 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Forgot Password: Should send reset email for active user")
     void forgotPassword_Success() {
-        ForgotPasswordRequest request = new ForgotPasswordRequest("active@example.com");
+        ForgotPasswordRequest request = new ForgotPasswordRequest();
+        request.setEmail("active@example.com");
+        
         when(userRepository.findByEmail("active@example.com")).thenReturn(Optional.of(activeUser));
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
@@ -262,7 +289,11 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Reset Password: Should fail on password mismatch")
     void resetPassword_Fail_PasswordMismatch() {
-        ResetPasswordRequest request = new ResetPasswordRequest("valid-token", "new_pass", "diff_pass");
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("valid-token");
+        request.setNewPassword("new_pass");
+        request.setConfirmPassword("diff_pass");
+        
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("reset_password:valid-token")).thenReturn("active@example.com");
         when(userRepository.findByEmail("active@example.com")).thenReturn(Optional.of(activeUser));
@@ -274,7 +305,11 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("Reset Password: Should succeed and save new password")
     void resetPassword_Success() {
-        ResetPasswordRequest request = new ResetPasswordRequest("valid-token", "new_pass", "new_pass");
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("valid-token");
+        request.setNewPassword("new_pass");
+        request.setConfirmPassword("new_pass");
+        
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("reset_password:valid-token")).thenReturn("active@example.com");
         when(userRepository.findByEmail("active@example.com")).thenReturn(Optional.of(activeUser));
