@@ -1,4 +1,4 @@
-﻿package com.ecommerce.backend.modules.wishlist.entity;
+package com.ecommerce.backend.modules.wishlist.entity;
 
 import com.ecommerce.backend.common.utils.Tsid;
 import com.ecommerce.backend.modules.auth.entity.User;
