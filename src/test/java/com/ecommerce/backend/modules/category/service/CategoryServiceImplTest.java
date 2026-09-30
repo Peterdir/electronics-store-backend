@@ -74,7 +74,7 @@ class CategoryServiceImplTest {
         @Test
         @DisplayName("TC-CAT-01 [Positive]: Should return list of all categories")
         void getAllCategories_Success() {
-            when(categoryRepository.findAll()).thenReturn(List.of(testCategory));
+            when(categoryRepository.findAllWithProducts()).thenReturn(List.of(testCategory));
             when(categoryMapper.toResponse(testCategory)).thenReturn(testResponse);
 
             List<CategoryResponse> results = categoryService.getAllCategories();
@@ -82,13 +82,13 @@ class CategoryServiceImplTest {
             assertNotNull(results);
             assertEquals(1, results.size());
             assertEquals("Laptops", results.get(0).getName());
-            verify(categoryRepository, times(1)).findAll();
+            verify(categoryRepository, times(1)).findAllWithProducts();
         }
 
         @Test
         @DisplayName("TC-CAT-02 [Boundary]: Should return empty list when no categories exist")
         void getAllCategories_Empty_ReturnsEmptyList() {
-            when(categoryRepository.findAll()).thenReturn(Collections.emptyList());
+            when(categoryRepository.findAllWithProducts()).thenReturn(Collections.emptyList());
 
             List<CategoryResponse> results = categoryService.getAllCategories();
 

@@ -85,7 +85,7 @@ class BrandServiceImplTest {
         @Test
         @DisplayName("TC-BRAND-01 [Positive]: Should return list of all brands")
         void getAllBrands_Success() {
-            when(brandRepository.findAll()).thenReturn(List.of(testBrand));
+            when(brandRepository.findAllWithBrands()).thenReturn(List.of(testBrand));
             when(brandMapper.toResponse(testBrand)).thenReturn(testResponse);
 
             List<BrandResponse> results = brandService.getAllBrands();
@@ -93,13 +93,13 @@ class BrandServiceImplTest {
             assertNotNull(results);
             assertEquals(1, results.size());
             assertEquals("Apple", results.get(0).getName());
-            verify(brandRepository, times(1)).findAll();
+            verify(brandRepository, times(1)).findAllWithBrands();
         }
 
         @Test
         @DisplayName("TC-BRAND-02 [Boundary]: Should return empty list when no brands exist")
         void getAllBrands_Empty_ReturnsEmptyList() {
-            when(brandRepository.findAll()).thenReturn(Collections.emptyList());
+            when(brandRepository.findAllWithBrands()).thenReturn(Collections.emptyList());
 
             List<BrandResponse> results = brandService.getAllBrands();
 
