@@ -29,7 +29,7 @@ public class BrandServiceImpl implements BrandService {
 
     @Override
     public List<BrandResponse> getAllBrands() {
-        return brandRepository.findAll().stream()
+        return brandRepository.findAllWithBrands().stream()
                 .map(brandMapper::toResponse)
                 .toList();
     }
