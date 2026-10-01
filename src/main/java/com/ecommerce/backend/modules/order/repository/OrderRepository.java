@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
@@ -31,5 +33,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("orderStatus") OrderStatus orderStatus,
             @Param("paymentStatus") PaymentStatus paymentStatus,
             Pageable pageable
-            );
+    );
+
+    @Query("""
+        SELECT o FROM Order o WHERE
+        o.user.id = :userId
+        AND (:orderStatus IS NULL OR o.orderStatus = :orderStatus)
+        """)
+    Page<Order> findByUserIdAndOrderStatus(
+            @Param("userId") Long userId,
+            @Param("orderStatus") OrderStatus orderStatus,
+            Pageable pageable
+    );
 }

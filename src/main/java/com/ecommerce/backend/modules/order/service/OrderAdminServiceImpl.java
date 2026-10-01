@@ -95,6 +95,8 @@ public class OrderAdminServiceImpl implements OrderAdminService {
     }
 
     private void restoreInventory(Order order, String reason) {
+        if (order.getItems() == null) return;
+
         for (OrderItem item : order.getItems()) {
             if (item != null) {
                 ProductVariant productVariant = item.getProductVariant();
