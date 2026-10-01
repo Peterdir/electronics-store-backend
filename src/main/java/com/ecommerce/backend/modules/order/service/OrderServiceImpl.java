@@ -237,6 +237,10 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("You do not have permission to pay for this order.");
         }
 
+        if (order.getUser().getStatus() == UserStatus.INACTIVE) {
+            throw new BadRequestException("This account has been locked. Please contact support.");
+        }
+
         if (order.getOrderStatus() == OrderStatus.CANCELLED) {
             throw new BadRequestException("Cannot make payment for a cancelled order.");
         }
@@ -245,6 +249,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("Order is already paid.");
         }
 
+        // TODO: Replace with actual payment gateway URL
         String paymentUrl = "/api/v1/payments/checkout?orderId=" + order.getId() + "&amount=" + order.getTotalPrice();
 
         return OrderPaymentResponse.builder()
