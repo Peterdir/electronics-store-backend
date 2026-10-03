@@ -202,29 +202,43 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("This account has been locked. Please contact support.");
         }
 
-        if (order.getOrderStatus() == OrderStatus.CANCELLED) {
-            throw new BadRequestException("This order is already cancelled.");
-        }
-
-        if (order.getOrderStatus() == OrderStatus.DELIVERED) {
-            throw new BadRequestException("Cannot cancel an order that has already been delivered.");
-        }
-
-        if (order.getOrderStatus() == OrderStatus.SHIPPED) {
-            throw new BadRequestException("Cannot cancel an order that is currently being shipped.");
+        switch (order.getOrderStatus()) {
+            case SHIPPED ->
+                throw new BadRequestException("This order can no longer be cancelled as it has already been shipped.");
+            case DELIVERED ->
+                throw new BadRequestException("Cannot cancel an order that has already been delivered.");
+            case CANCELLED ->
+                throw new BadRequestException("This order is already cancelled.");
+            default -> {}
         }
 
         if (!canUserCancel(order)) {
             throw new BadRequestException("This order cannot be cancelled in its current status: " + order.getOrderStatus());
         }
 
+        boolean isPaid = order.getPaymentStatus() == PaymentStatus.PAID;
+
         restoreInventory(order, request.getReason());
         order.setOrderStatus(OrderStatus.CANCELLED);
+
+        if (isPaid) {
+            order.setPaymentStatus(PaymentStatus.PENDING_REFUND);
+        }
+
         order.setCancelReason(request.getReason());
         order.setCancelledAt(Instant.now());
         Order updatedOrder = orderRepository.save(order);
 
-        return mapToOrderDetailUserResponse(updatedOrder);
+        OrderDetailUserResponse response = mapToOrderDetailUserResponse(updatedOrder);
+
+        if (isPaid) {
+            response.setMessage("Order cancelled. Your refund will be processed within 3-5 business days.");
+        }
+        else {
+            response.setMessage("Order cancelled successfully.");
+        }
+
+        return response;
     }
 
     @Override

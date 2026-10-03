@@ -81,17 +81,36 @@ public class OrderAdminServiceImpl implements OrderAdminService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("This order no longer exists or its status has been changed. Data is being updated."));
 
-        if (!order.getOrderStatus().canTransitionTo(OrderStatus.CANCELLED)) {
-            throw new BadRequestException("Invalid status transition. Please follow the correct order flow.");
+        switch (order.getOrderStatus()) {
+            case SHIPPED ->
+                    throw new BadRequestException("This order can no longer be cancelled as it has already been shipped.");
+            case DELIVERED ->
+                    throw new BadRequestException("Cannot cancel an order that has already been delivered.");
+            case CANCELLED ->
+                    throw new BadRequestException("This order is already cancelled.");
+            default -> {}
         }
+
+        boolean isPaid = order.getPaymentStatus() == PaymentStatus.PAID;
 
         restoreInventory(order, request.getReason());
         order.setOrderStatus(OrderStatus.CANCELLED);
+
+        if (isPaid) {
+            order.setPaymentStatus(PaymentStatus.PENDING_REFUND);
+        }
+
         order.setCancelReason(request.getReason());
         order.setCancelledAt(Instant.now());
         Order updatedOrder = orderRepository.save(order);
 
-        return mapToOrderDetailResponse(updatedOrder);
+        OrderDetailAdminResponse response = mapToOrderDetailResponse(updatedOrder);
+        if (isPaid) {
+            response.setMessage("Order cancelled. Your refund will be processed within 3-5 business days.");
+        } else {
+            response.setMessage("Order cancelled successfully.");
+        }
+        return response;
     }
 
     private void restoreInventory(Order order, String reason) {

@@ -223,9 +223,46 @@ class OrderAdminServiceImplTest {
             assertNotNull(response);
             assertEquals(OrderStatus.CANCELLED, response.getOrderStatus());
             assertEquals("Customer requested refund", response.getCancelReason());
+            assertEquals("Order cancelled successfully.", response.getMessage());
             assertEquals(12L, inventory.getQuantity());
             verify(inventoryRepository, times(1)).save(inventory);
             verify(inventoryHistoryRepository, times(1)).save(any(InventoryHistory.class));
+        }
+
+        @Test
+        @DisplayName("Cancel paid order sets PENDING_REFUND and refund message")
+        void cancelOrder_PaidOrder_SetsPendingRefund() {
+            order.setPaymentStatus(PaymentStatus.PAID);
+            when(orderRepository.findById(401L)).thenReturn(Optional.of(order));
+            when(inventoryRepository.findByProductVariantId(101L)).thenReturn(Optional.of(inventory));
+            when(orderRepository.save(any(Order.class))).thenAnswer(i -> i.getArgument(0));
+
+            CancelOrderRequest request = CancelOrderRequest.builder()
+                    .reason("Defective batch")
+                    .build();
+
+            OrderDetailAdminResponse response = orderAdminService.cancelOrder(401L, request);
+
+            assertNotNull(response);
+            assertEquals(OrderStatus.CANCELLED, response.getOrderStatus());
+            assertEquals(PaymentStatus.PENDING_REFUND, response.getPaymentStatus());
+            assertEquals("Order cancelled. Your refund will be processed within 3-5 business days.", response.getMessage());
+        }
+
+        @Test
+        @DisplayName("Cancel shipped order throws BadRequestException")
+        void cancelOrder_Shipped_ThrowsException() {
+            order.setOrderStatus(OrderStatus.SHIPPED);
+            when(orderRepository.findById(401L)).thenReturn(Optional.of(order));
+
+            CancelOrderRequest request = CancelOrderRequest.builder()
+                    .reason("Late delivery")
+                    .build();
+
+            BadRequestException ex = assertThrows(BadRequestException.class, () ->
+                    orderAdminService.cancelOrder(401L, request)
+            );
+            assertEquals("This order can no longer be cancelled as it has already been shipped.", ex.getMessage());
         }
     }
 }

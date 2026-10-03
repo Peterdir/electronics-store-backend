@@ -43,6 +43,8 @@ public class OrderDetailAdminResponse {
     private Instant createdAt;
     private Instant updatedAt;
 
+    private String message;
+
     // Danh sách sản phẩm
     private List<OrderItemResponse> items;
 }

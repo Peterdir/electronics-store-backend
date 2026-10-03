@@ -52,6 +52,8 @@ public class OrderDetailUserResponse {
     private Boolean canPay;
     private Boolean canBuyAgain;
 
+    private String message;
+
     // Danh sách sản phẩm
     private List<OrderItemResponse> items;
 }

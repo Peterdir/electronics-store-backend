@@ -481,6 +481,7 @@ class OrderServiceImplTest {
             assertEquals(OrderStatus.CANCELLED, response.getOrderStatus());
             assertEquals("Changed my mind, found better deal", response.getCancelReason());
             assertNotNull(response.getCancelledAt());
+            assertEquals("Order cancelled successfully.", response.getMessage());
 
             // Check inventory restored: variant1 (50 + 1 = 51), variant2 (20 + 2 = 22)
             assertEquals(51L, inventory1.getQuantity());
@@ -488,6 +489,23 @@ class OrderServiceImplTest {
             verify(inventoryRepository, times(2)).save(any(Inventory.class));
             verify(inventoryHistoryRepository, times(2)).save(any(InventoryHistory.class));
             verify(orderRepository, times(1)).save(order);
+        }
+
+        @Test
+        @DisplayName("TC-ORDER-12b [Positive - E2]: Cancel paid order sets PENDING_REFUND and returns refund message")
+        void cancelMyOrder_PaidOrder_SetsPendingRefund() {
+            order.setPaymentStatus(PaymentStatus.PAID);
+            when(orderRepository.findById(5001L)).thenReturn(Optional.of(order));
+            when(inventoryRepository.findByProductVariantId(101L)).thenReturn(Optional.of(inventory1));
+            when(inventoryRepository.findByProductVariantId(102L)).thenReturn(Optional.of(inventory2));
+            when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            OrderDetailUserResponse response = orderService.cancelMyOrder(1L, 5001L, cancelRequest);
+
+            assertNotNull(response);
+            assertEquals(OrderStatus.CANCELLED, response.getOrderStatus());
+            assertEquals(PaymentStatus.PENDING_REFUND, response.getPaymentStatus());
+            assertEquals("Order cancelled. Your refund will be processed within 3-5 business days.", response.getMessage());
         }
 
         @Test
@@ -523,7 +541,7 @@ class OrderServiceImplTest {
             BadRequestException ex = assertThrows(BadRequestException.class, () ->
                     orderService.cancelMyOrder(1L, 5001L, cancelRequest)
             );
-            assertEquals("Cannot cancel an order that is currently being shipped.", ex.getMessage());
+            assertEquals("This order can no longer be cancelled as it has already been shipped.", ex.getMessage());
         }
 
         @Test
