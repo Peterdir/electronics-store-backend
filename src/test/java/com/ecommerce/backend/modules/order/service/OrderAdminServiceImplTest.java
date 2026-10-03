@@ -100,7 +100,7 @@ class OrderAdminServiceImplTest {
                 .subtotal(BigDecimal.valueOf(200.0))
                 .totalPrice(BigDecimal.valueOf(200.0))
                 .orderStatus(OrderStatus.PENDING)
-                .paymentStatus(PaymentStatus.PAID)
+                .paymentStatus(PaymentStatus.UNPAID)
                 .paymentMethod(PaymentMethod.COD)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
@@ -210,6 +210,7 @@ class OrderAdminServiceImplTest {
         @Test
         @DisplayName("Cancel order success restores inventory and sets reason")
         void cancelOrder_Success() {
+            order.setPaymentStatus(PaymentStatus.UNPAID);
             when(orderRepository.findById(401L)).thenReturn(Optional.of(order));
             when(inventoryRepository.findByProductVariantId(101L)).thenReturn(Optional.of(inventory));
             when(orderRepository.save(any(Order.class))).thenAnswer(i -> i.getArgument(0));
