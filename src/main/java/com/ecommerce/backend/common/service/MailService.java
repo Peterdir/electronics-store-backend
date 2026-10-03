@@ -41,4 +41,20 @@ public class MailService {
 
         mailSender.send(message);
     }
+
+    public void sendOrderCancellationEmail(String toEmail, Long orderId, String reason) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromAddress);
+        message.setTo(toEmail);
+        message.setSubject("Order #" + orderId + " has been cancelled");
+        message.setText("Dear Customer,\n\n"
+                + "We would like to inform you that your order #" + orderId + " has been cancelled by our store.\n"
+                + "Reason: " + reason + "\n\n"
+                + "If you have already paid for this order, your refund will be processed within 3-5 business days.\n\n"
+                + "If you have any questions, please contact our support team.\n\n"
+                + "Thank you,\n"
+                + "Ecommerce Team");
+
+        mailSender.send(message);
+    }
 }

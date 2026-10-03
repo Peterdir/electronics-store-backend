@@ -2,6 +2,7 @@ package com.ecommerce.backend.modules.order.service;
 
 import com.ecommerce.backend.common.exception.BadRequestException;
 import com.ecommerce.backend.common.exception.ResourceNotFoundException;
+import com.ecommerce.backend.common.service.MailService;
 import com.ecommerce.backend.modules.auth.entity.User;
 import com.ecommerce.backend.modules.inventory.entity.Inventory;
 import com.ecommerce.backend.modules.inventory.entity.InventoryHistory;
@@ -53,6 +54,9 @@ class OrderAdminServiceImplTest {
 
     @Mock
     private InventoryHistoryRepository inventoryHistoryRepository;
+
+    @Mock
+    private MailService mailService;
 
     @InjectMocks
     private OrderAdminServiceImpl orderAdminService;
@@ -228,6 +232,11 @@ class OrderAdminServiceImplTest {
             assertEquals(12L, inventory.getQuantity());
             verify(inventoryRepository, times(1)).save(inventory);
             verify(inventoryHistoryRepository, times(1)).save(any(InventoryHistory.class));
+            verify(mailService, times(1)).sendOrderCancellationEmail(
+                    eq("admin_user@example.com"),
+                    eq(401L),
+                    eq("Customer requested refund")
+            );
         }
 
         @Test
@@ -248,10 +257,15 @@ class OrderAdminServiceImplTest {
             assertEquals(OrderStatus.CANCELLED, response.getOrderStatus());
             assertEquals(PaymentStatus.PENDING_REFUND, response.getPaymentStatus());
             assertEquals("Order cancelled. Your refund will be processed within 3-5 business days.", response.getMessage());
+            verify(mailService, times(1)).sendOrderCancellationEmail(
+                    eq("admin_user@example.com"),
+                    eq(401L),
+                    eq("Defective batch")
+            );
         }
 
         @Test
-        @DisplayName("Cancel shipped order throws BadRequestException")
+        @DisplayName("Cancel shipped order throws BadRequestException and does not send mail")
         void cancelOrder_Shipped_ThrowsException() {
             order.setOrderStatus(OrderStatus.SHIPPED);
             when(orderRepository.findById(401L)).thenReturn(Optional.of(order));
@@ -264,6 +278,24 @@ class OrderAdminServiceImplTest {
                     orderAdminService.cancelOrder(401L, request)
             );
             assertEquals("This order can no longer be cancelled as it has already been shipped.", ex.getMessage());
+            verify(mailService, never()).sendOrderCancellationEmail(anyString(), anyLong(), anyString());
+        }
+
+        @Test
+        @DisplayName("Cancel order with no user email does not invoke mailService")
+        void cancelOrder_NoUserEmail_DoesNotSendEmail() {
+            order.setUser(null);
+            when(orderRepository.findById(401L)).thenReturn(Optional.of(order));
+            when(inventoryRepository.findByProductVariantId(101L)).thenReturn(Optional.of(inventory));
+            when(orderRepository.save(any(Order.class))).thenAnswer(i -> i.getArgument(0));
+
+            CancelOrderRequest request = CancelOrderRequest.builder()
+                    .reason("No email order")
+                    .build();
+
+            orderAdminService.cancelOrder(401L, request);
+
+            verify(mailService, never()).sendOrderCancellationEmail(anyString(), anyLong(), anyString());
         }
     }
 }

@@ -2,6 +2,7 @@ package com.ecommerce.backend.modules.order.service;
 
 import com.ecommerce.backend.common.exception.BadRequestException;
 import com.ecommerce.backend.common.exception.ResourceNotFoundException;
+import com.ecommerce.backend.common.service.MailService;
 import com.ecommerce.backend.modules.inventory.entity.InventoryHistory;
 import com.ecommerce.backend.modules.inventory.enums.InventoryAction;
 import com.ecommerce.backend.modules.inventory.repository.InventoryHistoryRepository;
@@ -33,6 +34,7 @@ public class OrderAdminServiceImpl implements OrderAdminService {
     private final OrderRepository orderRepository;
     private final InventoryRepository inventoryRepository;
     private final InventoryHistoryRepository inventoryHistoryRepository;
+    private final MailService mailService;
 
     @Override
     @Transactional(readOnly = true)
@@ -103,6 +105,14 @@ public class OrderAdminServiceImpl implements OrderAdminService {
         order.setCancelReason(request.getReason());
         order.setCancelledAt(Instant.now());
         Order updatedOrder = orderRepository.save(order);
+
+        if (order.getUser() != null && order.getUser().getEmail() != null) {
+            mailService.sendOrderCancellationEmail(
+                    order.getUser().getEmail(),
+                    order.getId(),
+                    request.getReason()
+            );
+        }
 
         OrderDetailAdminResponse response = mapToOrderDetailResponse(updatedOrder);
         if (isPaid) {
