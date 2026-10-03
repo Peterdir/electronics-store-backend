@@ -65,16 +65,38 @@ public class OrderAdminServiceImpl implements OrderAdminService {
             throw new BadRequestException("Invalid status transition. Please follow the correct order flow.");
         }
 
-        if (newStatus == OrderStatus.CANCELLED) {
+        boolean isCancelled = newStatus == OrderStatus.CANCELLED;
+        boolean isPaid = order.getPaymentStatus() == PaymentStatus.PAID;
+
+        if (isCancelled) {
             restoreInventory(order, "Order status updated to CANCELLED by Admin");
             order.setCancelReason("Cancelled by Admin via status update");
             order.setCancelledAt(Instant.now());
+
+            if (isPaid) {
+                order.setPaymentStatus(PaymentStatus.PENDING_REFUND);
+            }
         }
 
         order.setOrderStatus(newStatus);
         Order updatedOrder = orderRepository.save(order);
 
-        return mapToOrderDetailResponse(updatedOrder);
+        if (isCancelled && order.getUser() != null && order.getUser().getEmail() != null) {
+            mailService.sendOrderCancellationEmail(
+                    order.getUser().getEmail(),
+                    order.getId(),
+                    order.getCancelReason()
+            );
+        }
+
+        OrderDetailAdminResponse response = mapToOrderDetailResponse(updatedOrder);
+        if (isCancelled) {
+            response.setMessage(isPaid
+                    ? "Order cancelled. Your refund will be processed within 3-5 business days."
+                    : "Order cancelled successfully.");
+        }
+
+        return response;
     }
 
     @Override

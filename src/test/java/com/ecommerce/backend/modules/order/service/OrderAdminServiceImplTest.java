@@ -173,6 +173,8 @@ class OrderAdminServiceImplTest {
 
             assertNotNull(response);
             assertEquals(OrderStatus.PROCESSING, response.getOrderStatus());
+            assertNull(response.getMessage());
+            verify(mailService, never()).sendOrderCancellationEmail(anyString(), anyLong(), anyString());
         }
 
         @Test
@@ -188,7 +190,7 @@ class OrderAdminServiceImplTest {
         }
 
         @Test
-        @DisplayName("Transition to CANCELLED restores stock")
+        @DisplayName("Transition to CANCELLED restores stock, sends mail, and sets cancel message")
         void updateOrderStatus_ToCancelled_RestoresStock() {
             when(orderRepository.findById(401L)).thenReturn(Optional.of(order));
             when(inventoryRepository.findByProductVariantId(101L)).thenReturn(Optional.of(inventory));
@@ -202,9 +204,43 @@ class OrderAdminServiceImplTest {
 
             assertNotNull(response);
             assertEquals(OrderStatus.CANCELLED, response.getOrderStatus());
+            assertEquals("Order cancelled successfully.", response.getMessage());
             assertEquals(12L, inventory.getQuantity()); // 10 + 2
             verify(inventoryRepository, times(1)).save(inventory);
             verify(inventoryHistoryRepository, times(1)).save(any(InventoryHistory.class));
+            verify(mailService, times(1)).sendOrderCancellationEmail(
+                    eq("admin_user@example.com"),
+                    eq(401L),
+                    eq("Cancelled by Admin via status update")
+            );
+        }
+
+        @Test
+        @DisplayName("Transition to CANCELLED for paid order sets PENDING_REFUND and refund message")
+        void updateOrderStatus_ToCancelled_PaidOrder_SetsPendingRefund() {
+            order.setPaymentStatus(PaymentStatus.PAID);
+            when(orderRepository.findById(401L)).thenReturn(Optional.of(order));
+            when(inventoryRepository.findByProductVariantId(101L)).thenReturn(Optional.of(inventory));
+            when(orderRepository.save(any(Order.class))).thenAnswer(i -> i.getArgument(0));
+
+            UpdateOrderStatusRequest request = UpdateOrderStatusRequest.builder()
+                    .newStatus(OrderStatus.CANCELLED)
+                    .build();
+
+            OrderDetailAdminResponse response = orderAdminService.updateOrderStatus(401L, request);
+
+            assertNotNull(response);
+            assertEquals(OrderStatus.CANCELLED, response.getOrderStatus());
+            assertEquals(PaymentStatus.PENDING_REFUND, response.getPaymentStatus());
+            assertEquals("Order cancelled. Your refund will be processed within 3-5 business days.", response.getMessage());
+            assertEquals(12L, inventory.getQuantity());
+            verify(inventoryRepository, times(1)).save(inventory);
+            verify(inventoryHistoryRepository, times(1)).save(any(InventoryHistory.class));
+            verify(mailService, times(1)).sendOrderCancellationEmail(
+                    eq("admin_user@example.com"),
+                    eq(401L),
+                    eq("Cancelled by Admin via status update")
+            );
         }
     }
 
