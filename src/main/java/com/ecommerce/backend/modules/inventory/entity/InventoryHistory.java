@@ -42,5 +42,5 @@ public class InventoryHistory {
     @JoinColumn(name = "inventory_id")
     private Inventory inventory;
 
-    // Thiáº¿u UserId
+    // Thiếu UserId
 }

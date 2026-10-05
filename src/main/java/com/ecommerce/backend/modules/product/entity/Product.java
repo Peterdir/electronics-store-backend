@@ -41,6 +41,7 @@ public class Product {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "json")
+    @Builder.Default
     private Map<String, Object> specification = new HashMap<>();
 
     private Instant createdAt;

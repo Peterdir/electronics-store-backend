@@ -36,6 +36,7 @@ public class ProductVariant {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "json")
+    @Builder.Default
     private Map<String, Object> attributes = new HashMap<>();
 
     private String imageUrl;

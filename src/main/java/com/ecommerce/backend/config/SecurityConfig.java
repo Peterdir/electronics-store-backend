@@ -54,6 +54,8 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/auth/**").permitAll()
 
+                        .requestMatchers("/api/orders/checkout", "/api/v1/orders/checkout").permitAll()
+
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
