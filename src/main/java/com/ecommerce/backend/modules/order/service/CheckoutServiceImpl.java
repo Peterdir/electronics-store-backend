@@ -112,7 +112,7 @@ public class CheckoutServiceImpl implements CheckoutService {
 
         Order savedOrder = orderRepository.save(order);
 
-        if (!isBuyNow && cart != null) {
+        if (!isBuyNow) {
             cart.getItems().clear();
             cartRepository.save(cart);
         }
