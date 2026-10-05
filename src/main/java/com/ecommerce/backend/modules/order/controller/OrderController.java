@@ -1,11 +1,10 @@
 package com.ecommerce.backend.modules.order.controller;
 
 import com.ecommerce.backend.modules.order.dto.request.CancelOrderRequest;
-import com.ecommerce.backend.modules.order.dto.response.BuyAgainResponse;
-import com.ecommerce.backend.modules.order.dto.response.OrderDetailUserResponse;
-import com.ecommerce.backend.modules.order.dto.response.OrderListUserResponse;
-import com.ecommerce.backend.modules.order.dto.response.OrderPaymentResponse;
+import com.ecommerce.backend.modules.order.dto.request.CheckoutRequest;
+import com.ecommerce.backend.modules.order.dto.response.*;
 import com.ecommerce.backend.modules.order.enums.OrderStatus;
+import com.ecommerce.backend.modules.order.service.CheckoutService;
 import com.ecommerce.backend.modules.order.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +25,7 @@ import java.util.Objects;
 public class OrderController {
 
     private final OrderService orderService;
+    private final CheckoutService checkoutService;
 
     private Long extractUserId(Jwt jwt) {
         return Long.valueOf(Objects.requireNonNull(jwt.getSubject(), "JWT subject must not be null"));
@@ -81,5 +81,19 @@ public class OrderController {
     ) {
         Long userId = extractUserId(jwt);
         return ResponseEntity.ok(orderService.payOrder(userId, id));
+    }
+
+    @PostMapping("/checkout")
+    public ResponseEntity<CheckoutResponse> checkout(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody CheckoutRequest request
+            ) {
+        if (jwt != null) {
+            Long userId = extractUserId(jwt);
+            return ResponseEntity.ok(checkoutService.placeOrder(userId, request));
+        }
+        else {
+            return ResponseEntity.ok(checkoutService.placeGuestOrder(request));
+        }
     }
 }
