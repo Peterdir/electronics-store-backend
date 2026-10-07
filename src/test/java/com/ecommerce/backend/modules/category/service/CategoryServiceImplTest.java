@@ -58,10 +58,11 @@ class CategoryServiceImplTest {
         testRequest.setName("Laptops");
         testRequest.setStatus(CategoryStatus.ACTIVE);
 
-        testResponse = new CategoryResponse();
-        testResponse.setId(1L);
-        testResponse.setName("Laptops");
-        testResponse.setStatus(CategoryStatus.ACTIVE);
+        testResponse = CategoryResponse.builder()
+                .id(1L)
+                .name("Laptops")
+                .status(CategoryStatus.ACTIVE)
+                .build();
     }
 
     // =========================================================================

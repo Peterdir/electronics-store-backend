@@ -66,11 +66,12 @@ class BrandServiceImplTest {
         testRequest.setName("Apple");
         testRequest.setStatus(BrandStatus.ACTIVE);
 
-        testResponse = new BrandResponse();
-        testResponse.setId(1L);
-        testResponse.setName("Apple");
-        testResponse.setStatus(BrandStatus.ACTIVE);
-        testResponse.setLogo("https://cdn.example.com/brands/apple.png");
+        testResponse = BrandResponse.builder()
+                .id(1L)
+                .name("Apple")
+                .status(BrandStatus.ACTIVE)
+                .logo("https://cdn.example.com/brands/apple.png")
+                .build();
 
         mockLogoFile = mock(MultipartFile.class);
     }

@@ -45,10 +45,11 @@ class PolicyServiceImplTest {
         testPolicy.setSlug("privacy-policy");
         testPolicy.setStatus(PolicyStatus.ACTIVE);
 
-        testResponse = new PolicyResponse();
-        testResponse.setId(1L);
-        testResponse.setTitle("Privacy Policy");
-        testResponse.setSlug("privacy-policy");
+        testResponse = PolicyResponse.builder()
+                .id(1L)
+                .title("Privacy Policy")
+                .slug("privacy-policy")
+                .build();
     }
 
     // =========================================================================

@@ -61,9 +61,10 @@ class InventoryServiceImplTest {
         adjustRequest.setQuantity(10L);
         adjustRequest.setReason("Stock adjustment test");
 
-        mockResponse = new InventoryResponse();
-        mockResponse.setId(1L);
-        mockResponse.setStatus(InventoryStatus.IN_STOCK);
+        mockResponse = InventoryResponse.builder()
+                .id(1L)
+                .status(InventoryStatus.IN_STOCK)
+                .build();
     }
 
     // =========================================================================
@@ -89,7 +90,10 @@ class InventoryServiceImplTest {
         @Test
         @DisplayName("TC-INV-02 [Positive]: Filter inventory with status using space format")
         void getInventoryList_StatusWithSpace_ReturnsMatches() {
-            mockResponse.setStatus(InventoryStatus.OUT_OF_STOCK);
+            mockResponse = InventoryResponse.builder()
+                    .id(1L)
+                    .status(InventoryStatus.OUT_OF_STOCK)
+                    .build();
             when(inventoryRepository.findByCriteria(null, null, null)).thenReturn(List.of(mockInventory));
             when(inventoryMapper.toResponse(mockInventory)).thenReturn(mockResponse);
 
