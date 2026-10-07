@@ -4,9 +4,9 @@ import com.ecommerce.backend.modules.auth.enums.Role;
 import com.ecommerce.backend.modules.auth.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 @Builder
 public class UserAdminResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING)

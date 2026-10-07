@@ -5,14 +5,14 @@ import com.ecommerce.backend.modules.order.enums.PaymentMethod;
 import com.ecommerce.backend.modules.order.enums.PaymentStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
-@Data
-@Builder
+@Getter
+@Builder(toBuilder = true)
 public class OrderDetailAdminResponse {
 
     @JsonFormat(shape = JsonFormat.Shape.STRING)

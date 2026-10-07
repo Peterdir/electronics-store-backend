@@ -4,9 +4,9 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.modules.auth.enums.UserStatus;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 @Builder
 public class UserResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING)

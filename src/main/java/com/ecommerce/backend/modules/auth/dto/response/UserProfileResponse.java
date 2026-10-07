@@ -2,9 +2,9 @@ package com.ecommerce.backend.modules.auth.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 @Builder
 public class UserProfileResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING)

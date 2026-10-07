@@ -4,12 +4,12 @@ import com.ecommerce.backend.modules.order.enums.OrderStatus;
 import com.ecommerce.backend.modules.order.enums.PaymentStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
-@Data
+@Getter
 @Builder
 public class OrderListAdminResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING)

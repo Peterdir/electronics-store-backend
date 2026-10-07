@@ -2,11 +2,11 @@ package com.ecommerce.backend.modules.order.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
 import java.math.BigDecimal;
 
-@Data
+@Getter
 @Builder
 public class OrderItemResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING)

@@ -232,10 +232,10 @@ public class OrderServiceImpl implements OrderService {
         OrderDetailUserResponse response = mapToOrderDetailUserResponse(updatedOrder);
 
         if (isPaid) {
-            response.setMessage("Order cancelled. Your refund will be processed within 3-5 business days.");
+            response = response.toBuilder().message("Order cancelled. Your refund will be processed within 3-5 business days.").build();
         }
         else {
-            response.setMessage("Order cancelled successfully.");
+            response = response.toBuilder().message("Order cancelled successfully.").build();
         }
 
         return response;

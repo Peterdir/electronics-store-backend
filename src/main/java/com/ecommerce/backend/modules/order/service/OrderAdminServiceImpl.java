@@ -91,9 +91,11 @@ public class OrderAdminServiceImpl implements OrderAdminService {
 
         OrderDetailAdminResponse response = mapToOrderDetailResponse(updatedOrder);
         if (isCancelled) {
-            response.setMessage(isPaid
+            response = response.toBuilder()
+                .message(isPaid
                     ? "Order cancelled. Your refund will be processed within 3-5 business days."
-                    : "Order cancelled successfully.");
+                    : "Order cancelled successfully.")
+                .build();
         }
 
         return response;
@@ -138,9 +140,9 @@ public class OrderAdminServiceImpl implements OrderAdminService {
 
         OrderDetailAdminResponse response = mapToOrderDetailResponse(updatedOrder);
         if (isPaid) {
-            response.setMessage("Order cancelled. Your refund will be processed within 3-5 business days.");
+            response = response.toBuilder().message("Order cancelled. Your refund will be processed within 3-5 business days.").build();
         } else {
-            response.setMessage("Order cancelled successfully.");
+            response = response.toBuilder().message("Order cancelled successfully.").build();
         }
         return response;
     }

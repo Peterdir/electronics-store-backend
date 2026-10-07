@@ -3,12 +3,12 @@ package com.ecommerce.backend.modules.coupon.dto.response;
 import com.ecommerce.backend.modules.coupon.enums.DiscountType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
-@Data
+@Getter
 @Builder
 public class CouponResponse {
     @JsonFormat(shape = JsonFormat.Shape.STRING)

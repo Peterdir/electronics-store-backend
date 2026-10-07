@@ -3,12 +3,12 @@ package com.ecommerce.backend.modules.order.dto.response;
 import com.ecommerce.backend.modules.cart.dto.response.CartResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Data
+@Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

@@ -8,7 +8,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

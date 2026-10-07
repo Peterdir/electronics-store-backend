@@ -2,9 +2,15 @@ package com.ecommerce.backend.modules.address.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-@Data
+@Getter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class AddressResponse {
 
     @JsonFormat(shape = JsonFormat.Shape.STRING)

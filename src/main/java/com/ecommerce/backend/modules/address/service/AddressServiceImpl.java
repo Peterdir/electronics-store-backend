@@ -170,16 +170,16 @@ public class AddressServiceImpl implements AddressService{
         List<Address> addresses = addressRepository.findByUserId(userId);
 
         return addresses.stream().map(address -> {
-            AddressResponse response = new AddressResponse();
-            response.setId(address.getId());
-            response.setFullName(address.getFullName());
-            response.setPhone(address.getPhone());
-            response.setProvince(address.getProvince());
-            response.setDistrict(address.getDistrict());
-            response.setWard(address.getWard());
-            response.setSpecificAddress(address.getSpecificAddress());
-            response.setIsDefault(address.getIsDefault());
-            return response;
+            return AddressResponse.builder()
+                .id(address.getId())
+                .fullName(address.getFullName())
+                .phone(address.getPhone())
+                .province(address.getProvince())
+                .district(address.getDistrict())
+                .ward(address.getWard())
+                .specificAddress(address.getSpecificAddress())
+                .isDefault(address.getIsDefault())
+                .build();
         }).collect(Collectors.toList());
     }
 }
