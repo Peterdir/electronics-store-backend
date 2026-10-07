@@ -56,6 +56,8 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/orders/checkout", "/api/v1/orders/checkout").permitAll()
 
+                        .requestMatchers("/api/payments/vnpay/**", "/api/v1/payments/vnpay/**").permitAll()
+
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));

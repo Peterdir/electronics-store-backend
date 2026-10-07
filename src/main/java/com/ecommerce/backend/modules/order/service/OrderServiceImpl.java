@@ -263,8 +263,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("Order is already paid.");
         }
 
-        // TODO: Replace with actual payment gateway URL
-        String paymentUrl = "/api/v1/payments/checkout?orderId=" + order.getId() + "&amount=" + order.getTotalPrice();
+        String paymentUrl = "/api/v1/payments/vnpay/create?orderId=" + order.getId();
 
         return OrderPaymentResponse.builder()
                 .orderId(order.getId())

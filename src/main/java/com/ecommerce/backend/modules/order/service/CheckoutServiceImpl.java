@@ -453,8 +453,7 @@ public class CheckoutServiceImpl implements CheckoutService {
             message = "Order placed successfully!";
         } else {
             message = "Order created. Redirecting to payment gateway...";
-            paymentUrl = "/api/v1/payments/checkout?orderId=" + order.getId()
-                    + "&amount=" + order.getTotalPrice();
+            paymentUrl = "/api/v1/payments/vnpay/create?orderId=" + order.getId();
         }
 
         return CheckoutResponse.builder()
