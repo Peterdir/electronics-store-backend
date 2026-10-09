@@ -39,6 +39,8 @@ public class Product {
 
     private ProductStatus status;
 
+    private Double averageRating;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "json")
     @Builder.Default

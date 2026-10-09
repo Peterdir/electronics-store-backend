@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.Map;
 
 @Data
 @Builder
@@ -20,7 +21,7 @@ public class ReviewResponse {
 
     private String productImage;
 
-    private String variantName;
+    private Map<String, Object> variantAttributes;
 
     private boolean isProductDeleted;
 

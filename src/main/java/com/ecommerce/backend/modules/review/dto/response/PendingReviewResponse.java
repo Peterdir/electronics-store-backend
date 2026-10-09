@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.Map;
 
 /**
  * DTO dùng cho tab chờ đánh giá
@@ -27,7 +28,7 @@ public class PendingReviewResponse {
 
     private String productName;
 
-    private String variantName;
+    private Map<String, Object> variantAttributes;
 
     private String productImage;
 
