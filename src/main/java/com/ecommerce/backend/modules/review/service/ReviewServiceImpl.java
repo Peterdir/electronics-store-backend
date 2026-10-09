@@ -13,12 +13,16 @@ import com.ecommerce.backend.modules.product.entity.ProductImage;
 import com.ecommerce.backend.modules.product.entity.ProductVariant;
 import com.ecommerce.backend.modules.product.repository.ProductRepository;
 import com.ecommerce.backend.modules.product.repository.ProductVariantRepository;
+import com.ecommerce.backend.modules.review.dto.request.ReviewReplyRequest;
 import com.ecommerce.backend.modules.review.dto.request.ReviewRequest;
+import com.ecommerce.backend.modules.review.dto.response.AdminReviewResponse;
 import com.ecommerce.backend.modules.review.dto.response.PendingReviewResponse;
 import com.ecommerce.backend.modules.review.dto.response.ReviewResponse;
 import com.ecommerce.backend.modules.review.entity.Review;
 import com.ecommerce.backend.modules.review.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -140,6 +144,51 @@ public class ReviewServiceImpl implements ReviewService {
         reviewRepository.save(review);
 
         updateProductAverageRating(review.getProduct().getId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminReviewResponse> getReviewsForAdmin(Double rating, String productName, Pageable pageable) {
+        Page<Review> reviewPage = reviewRepository.findAllForAdmin(rating, productName, pageable);
+
+        return reviewPage.map(review -> AdminReviewResponse.builder()
+                .id(review.getId())
+                .productName(review.getProduct().getName())
+                .customerName(review.getUser().getFullName())
+                .rating(review.getRating())
+                .reviewText(review.getReviewText())
+                .createdAt(review.getCreatedAt())
+                .isHidden(review.isHidden())
+                .adminReply(review.getAdminReply())
+                .build());
+    }
+
+    @Override
+    @Transactional
+    public void toggleReviewVisibility(Long reviewId) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("This review has been deleted by the user and is no longer available."));
+
+        if (review.isDeleted()) {
+            throw new ResourceNotFoundException("This review has been deleted by the user and is no longer available.");
+        }
+
+        review.setHidden(!review.isHidden());
+        reviewRepository.save(review);
+    }
+
+    @Override
+    @Transactional
+    public void replyToReview(Long reviewId, ReviewReplyRequest request) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("This review has been deleted by the user and is no longer available."));
+
+        if (review.isDeleted()) {
+            throw new ResourceNotFoundException("This review has been deleted by the user and is no longer available.");
+        }
+
+        review.setAdminReply(request.getReplyText());
+        reviewRepository.save(review);
     }
 
     private void validateReviewContent(String text) {

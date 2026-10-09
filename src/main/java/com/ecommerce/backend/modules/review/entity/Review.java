@@ -39,6 +39,12 @@ public class Review {
     @Builder.Default
     private boolean isDeleted = false;
 
+    @Builder.Default
+    private boolean isHidden = false;
+
+    @Column(columnDefinition = "TEXT")
+    private String adminReply;
+
     private Instant createdAt;
     private Instant updatedAt;
 
