@@ -9,7 +9,7 @@ import com.ecommerce.backend.modules.category.entity.Category;
 import com.ecommerce.backend.modules.category.enums.CategoryStatus;
 import com.ecommerce.backend.modules.category.mapper.CategoryMapper;
 import com.ecommerce.backend.modules.category.repository.CategoryRepository;
-import com.ecommerce.backend.modules.product.entity.Product;
+import com.ecommerce.backend.modules.product.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,7 +19,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +38,9 @@ class CategoryServiceImplTest {
     @Mock
     private CategoryMapper categoryMapper;
 
+    @Mock
+    private ProductRepository productRepository;
+
     @InjectMocks
     private CategoryServiceImpl categoryService;
 
@@ -52,7 +54,6 @@ class CategoryServiceImplTest {
         testCategory.setId(1L);
         testCategory.setName("Laptops");
         testCategory.setStatus(CategoryStatus.ACTIVE);
-        testCategory.setProducts(new ArrayList<>());
 
         testRequest = new CategoryRequest();
         testRequest.setName("Laptops");
@@ -75,7 +76,7 @@ class CategoryServiceImplTest {
         @Test
         @DisplayName("TC-CAT-01 [Positive]: Should return list of all categories")
         void getAllCategories_Success() {
-            when(categoryRepository.findAllWithProducts()).thenReturn(List.of(testCategory));
+            when(categoryRepository.findAll()).thenReturn(List.of(testCategory));
             when(categoryMapper.toResponse(testCategory)).thenReturn(testResponse);
 
             List<CategoryResponse> results = categoryService.getAllCategories();
@@ -83,13 +84,13 @@ class CategoryServiceImplTest {
             assertNotNull(results);
             assertEquals(1, results.size());
             assertEquals("Laptops", results.get(0).getName());
-            verify(categoryRepository, times(1)).findAllWithProducts();
+            verify(categoryRepository, times(1)).findAll();
         }
 
         @Test
         @DisplayName("TC-CAT-02 [Boundary]: Should return empty list when no categories exist")
         void getAllCategories_Empty_ReturnsEmptyList() {
-            when(categoryRepository.findAllWithProducts()).thenReturn(Collections.emptyList());
+            when(categoryRepository.findAll()).thenReturn(Collections.emptyList());
 
             List<CategoryResponse> results = categoryService.getAllCategories();
 
@@ -146,9 +147,8 @@ class CategoryServiceImplTest {
         void createCategory_DuplicateName_ThrowsException() {
             when(categoryRepository.existsByName("Laptops")).thenReturn(true);
 
-            DuplicateResourceException ex = assertThrows(DuplicateResourceException.class, () ->
-                    categoryService.createCategory(testRequest)
-            );
+            DuplicateResourceException ex = assertThrows(DuplicateResourceException.class,
+                    () -> categoryService.createCategory(testRequest));
             assertThat(ex.getMessage()).contains("already exists");
             verify(categoryRepository, never()).save(any());
         }
@@ -182,9 +182,7 @@ class CategoryServiceImplTest {
         void updateCategory_NotFound_ThrowsException() {
             when(categoryRepository.findById(999L)).thenReturn(Optional.empty());
 
-            assertThrows(ResourceNotFoundException.class, () ->
-                    categoryService.updateCategory(999L, testRequest)
-            );
+            assertThrows(ResourceNotFoundException.class, () -> categoryService.updateCategory(999L, testRequest));
             verify(categoryRepository, never()).save(any());
         }
 
@@ -195,9 +193,7 @@ class CategoryServiceImplTest {
             when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
             when(categoryRepository.existsByNameAndIdNot("Existing Category", 1L)).thenReturn(true);
 
-            assertThrows(DuplicateResourceException.class, () ->
-                    categoryService.updateCategory(1L, testRequest)
-            );
+            assertThrows(DuplicateResourceException.class, () -> categoryService.updateCategory(1L, testRequest));
             verify(categoryRepository, never()).save(any());
         }
     }
@@ -212,8 +208,8 @@ class CategoryServiceImplTest {
         @Test
         @DisplayName("TC-CAT-09 [Positive]: Delete empty category successfully")
         void deleteCategory_Success() {
-            testCategory.setProducts(Collections.emptyList());
             when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
+            when(productRepository.existsByCategoryId(1L)).thenReturn(false);
 
             categoryService.deleteCategory(1L);
 
@@ -223,12 +219,10 @@ class CategoryServiceImplTest {
         @Test
         @DisplayName("TC-CAT-10 [Negative]: Throw BadRequestException when category has associated products")
         void deleteCategory_HasProducts_ThrowsBadRequest() {
-            testCategory.setProducts(List.of(new Product()));
             when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
+            when(productRepository.existsByCategoryId(1L)).thenReturn(true);
 
-            BadRequestException ex = assertThrows(BadRequestException.class, () ->
-                    categoryService.deleteCategory(1L)
-            );
+            BadRequestException ex = assertThrows(BadRequestException.class, () -> categoryService.deleteCategory(1L));
             assertThat(ex.getMessage()).contains("Cannot delete this category because it contains products");
             verify(categoryRepository, never()).delete(any());
         }
@@ -238,9 +232,7 @@ class CategoryServiceImplTest {
         void deleteCategory_NotFound_ThrowsException() {
             when(categoryRepository.findById(999L)).thenReturn(Optional.empty());
 
-            assertThrows(ResourceNotFoundException.class, () ->
-                    categoryService.deleteCategory(999L)
-            );
+            assertThrows(ResourceNotFoundException.class, () -> categoryService.deleteCategory(999L));
             verify(categoryRepository, never()).delete(any());
         }
     }
