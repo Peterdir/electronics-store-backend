@@ -36,6 +36,9 @@ public class ReturnRequest {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(columnDefinition = "TEXT")
+    private String adminNote;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ReturnStatus status;

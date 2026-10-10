@@ -31,6 +31,8 @@ public class ReturnRequestResponse {
     
     private String description;
     
+    private String adminNote;
+    
     private ReturnStatus status;
     
     private List<String> imageUrls;

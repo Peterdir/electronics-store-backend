@@ -19,6 +19,7 @@ public class ReturnRequestMapper {
                 .quantity(returnRequest.getQuantity())
                 .reason(returnRequest.getReason())
                 .description(returnRequest.getDescription())
+                .adminNote(returnRequest.getAdminNote())
                 .status(returnRequest.getStatus())
                 .imageUrls(returnRequest.getImageUrls())
                 .createdAt(returnRequest.getCreatedAt())
