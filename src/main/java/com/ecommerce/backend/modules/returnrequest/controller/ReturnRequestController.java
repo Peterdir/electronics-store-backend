@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Objects;
 
 @RestController
-@RequestMapping("/api/v1/return-requests")
+@RequestMapping("/api/return-requests")
 @RequiredArgsConstructor
 public class ReturnRequestController {
 

@@ -7,17 +7,24 @@ import com.ecommerce.backend.common.service.FileStorageService;
 import com.ecommerce.backend.common.utils.FileValidator;
 import com.ecommerce.backend.modules.auth.entity.User;
 import com.ecommerce.backend.modules.auth.repository.UserRepository;
+import com.ecommerce.backend.modules.inventory.entity.Inventory;
 import com.ecommerce.backend.modules.order.entity.Order;
 import com.ecommerce.backend.modules.order.entity.OrderItem;
 import com.ecommerce.backend.modules.order.enums.OrderStatus;
 import com.ecommerce.backend.modules.order.repository.OrderItemRepository;
+import com.ecommerce.backend.modules.product.entity.ProductVariant;
 import com.ecommerce.backend.modules.returnrequest.dto.request.ReturnRequestCreateRequest;
+import com.ecommerce.backend.modules.returnrequest.dto.request.ReturnRequestProcessRequest;
 import com.ecommerce.backend.modules.returnrequest.dto.response.ReturnRequestResponse;
 import com.ecommerce.backend.modules.returnrequest.entity.ReturnRequest;
 import com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus;
 import com.ecommerce.backend.modules.returnrequest.mapper.ReturnRequestMapper;
 import com.ecommerce.backend.modules.returnrequest.repository.ReturnRequestRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -102,5 +109,47 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
         ReturnRequest savedRequest = returnRequestRepository.save(returnRequest);
 
         return returnRequestMapper.toResponse(savedRequest);
+    }
+
+    @Override
+    public Page<ReturnRequestResponse> getReturnRequestsByStatus(ReturnStatus status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+
+        Page<ReturnRequest> returnRequests = returnRequestRepository.findByStatus(status, pageable);
+
+        return returnRequests.map(returnRequestMapper::toResponse);
+    }
+
+    @Override
+    public ReturnRequestResponse processReturnRequest(Long id, ReturnRequestProcessRequest request) {
+        ReturnRequest returnRequest = returnRequestRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Return request not found"));
+
+        if (returnRequest.getStatus() != ReturnStatus.PENDING) {
+            throw new BadRequestException("This return request has already been processed or cancelled.");
+        }
+
+        Order order = returnRequest.getOrder();
+
+        if (request.getStatus() == ReturnStatus.APPROVED) {
+            returnRequest.setStatus(ReturnStatus.APPROVED);
+            order.setOrderStatus(OrderStatus.RETURNED);
+
+            ProductVariant variant = returnRequest.getOrderItem().getProductVariant();
+            Inventory inventory = variant.getInventory();
+            inventory.setQuantity(inventory.getQuantity() + returnRequest.getQuantity());
+
+        } else if (request.getStatus() == ReturnStatus.REJECTED) {
+            if (request.getRejectReason() == null || request.getRejectReason().trim().isEmpty()) {
+                throw new BadRequestException("Please provide a reason for rejecting the return request.");
+            }
+            returnRequest.setStatus(ReturnStatus.REJECTED);
+            returnRequest.setAdminNote(request.getRejectReason());
+            order.setOrderStatus(OrderStatus.RETURN_REJECTED);
+        } else {
+             throw new BadRequestException("Invalid return status in request.");
+        }
+
+        return returnRequestMapper.toResponse(returnRequestRepository.save(returnRequest));
     }
 }

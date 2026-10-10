@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Objects;
 
 @RestController
-@RequestMapping({"/api/orders", "/api/v1/orders"})
+@RequestMapping("/api/orders")
 @RequiredArgsConstructor
 public class OrderController {
 

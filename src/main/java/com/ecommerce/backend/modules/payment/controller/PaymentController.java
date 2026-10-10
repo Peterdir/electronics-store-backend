@@ -13,7 +13,7 @@ import org.springframework.web.servlet.view.RedirectView;
 import java.util.Map;
 
 @RestController
-@RequestMapping({"/api/payments", "/api/v1/payments"})
+@RequestMapping("/api/payments")
 @RequiredArgsConstructor
 public class PaymentController {
 

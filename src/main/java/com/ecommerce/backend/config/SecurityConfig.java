@@ -54,9 +54,9 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        .requestMatchers("/api/orders/checkout", "/api/v1/orders/checkout").permitAll()
+                        .requestMatchers("/api/orders/checkout").permitAll()
 
-                        .requestMatchers("/api/payments/vnpay/**", "/api/v1/payments/vnpay/**").permitAll()
+                        .requestMatchers("/api/payments/vnpay/**").permitAll()
 
                         .anyRequest().authenticated()
                 )

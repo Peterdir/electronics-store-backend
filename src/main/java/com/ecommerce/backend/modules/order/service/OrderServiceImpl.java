@@ -263,7 +263,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("Order is already paid.");
         }
 
-        String paymentUrl = "/api/v1/payments/vnpay/create?orderId=" + order.getId();
+        String paymentUrl = "/api/payments/vnpay/create?orderId=" + order.getId();
 
         return OrderPaymentResponse.builder()
                 .orderId(order.getId())
