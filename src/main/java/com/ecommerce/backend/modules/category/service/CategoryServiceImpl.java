@@ -8,6 +8,7 @@ import com.ecommerce.backend.modules.category.dto.request.CategoryRequest;
 import com.ecommerce.backend.modules.category.dto.response.CategoryResponse;
 import com.ecommerce.backend.modules.category.entity.Category;
 import com.ecommerce.backend.modules.category.mapper.CategoryMapper;
+import com.ecommerce.backend.modules.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,11 +22,12 @@ public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
+    private final ProductRepository productRepository;
 
 
     @Override
     public List<CategoryResponse> getAllCategories() {
-        return categoryRepository.findAllWithProducts().stream()
+        return categoryRepository.findAll().stream()
                 .map(categoryMapper::toResponse)
                 .toList();
     }
@@ -71,7 +73,7 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
 
-        if (category.getProducts() != null && !category.getProducts().isEmpty()) {
+        if (productRepository.existsByCategoryId(id)) {
             throw new BadRequestException("Cannot delete this category because it contains products");
         }
 

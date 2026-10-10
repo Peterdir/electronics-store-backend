@@ -4,6 +4,7 @@ import com.ecommerce.backend.common.utils.Tsid;
 import com.ecommerce.backend.modules.address.entity.Address;
 import com.ecommerce.backend.modules.auth.enums.Role;
 import com.ecommerce.backend.modules.auth.enums.UserStatus;
+import com.ecommerce.backend.modules.returnrequest.entity.ReturnRequest;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
@@ -61,4 +62,8 @@ public class User {
     @OneToMany(mappedBy = "user")
     @Builder.Default
     private List<Address> addresses = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user")
+    @Builder.Default
+    private List<ReturnRequest> returnRequests = new ArrayList<>();
 }

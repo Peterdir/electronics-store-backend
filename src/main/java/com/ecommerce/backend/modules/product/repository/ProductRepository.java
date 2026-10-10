@@ -16,6 +16,10 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     List<Product> findByCategoryIdAndStatus(Long categoryId, ProductStatus status);
 
+    Boolean existsByCategoryId(Long categoryId);
+
+    Long countByCategoryId(Long categoryId);
+
     @Modifying
     @Query("UPDATE Product p SET p.status = :status WHERE p.id = :id")
     void updateStatus(@Param("id") Long id, @Param("status") ProductStatus status);

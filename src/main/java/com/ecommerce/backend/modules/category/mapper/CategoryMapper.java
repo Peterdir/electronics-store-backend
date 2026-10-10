@@ -3,10 +3,15 @@ package com.ecommerce.backend.modules.category.mapper;
 import com.ecommerce.backend.modules.category.dto.request.CategoryRequest;
 import com.ecommerce.backend.modules.category.dto.response.CategoryResponse;
 import com.ecommerce.backend.modules.category.entity.Category;
+import com.ecommerce.backend.modules.product.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class CategoryMapper {
+
+    private final ProductRepository productRepository;
 
     // Chuyển Request DTO sang Entity
     public Category toEntity(CategoryRequest request) {
@@ -26,8 +31,7 @@ public class CategoryMapper {
                 .id(category.getId())
                 .name(category.getName())
                 .status(category.getStatus())
-                .totalProducts((long) (category.getProducts() != null ?
-                        category.getProducts().size() : 0))
+                .totalProducts(productRepository.countByCategoryId(category.getId()))
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
                 .build();

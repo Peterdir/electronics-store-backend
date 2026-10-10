@@ -5,6 +5,7 @@ import com.ecommerce.backend.modules.auth.entity.User;
 import com.ecommerce.backend.modules.order.enums.OrderStatus;
 import com.ecommerce.backend.modules.order.enums.PaymentMethod;
 import com.ecommerce.backend.modules.order.enums.PaymentStatus;
+import com.ecommerce.backend.modules.returnrequest.entity.ReturnRequest;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
@@ -70,6 +71,10 @@ public class Order {
     @Builder.Default
     @BatchSize(size = 20)
     private List<OrderItem> items = new ArrayList<>();
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ReturnRequest> returnRequests = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

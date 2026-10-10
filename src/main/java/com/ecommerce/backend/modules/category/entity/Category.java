@@ -4,13 +4,10 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.ecommerce.backend.common.utils.Tsid;
 import com.ecommerce.backend.modules.category.enums.CategoryStatus;
-import com.ecommerce.backend.modules.product.entity.Product;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "categories")
@@ -34,7 +31,4 @@ public class Category {
 
     private Instant updatedAt;
 
-    @OneToMany(mappedBy = "category")
-    @Builder.Default
-    private List<Product> products = new ArrayList<>();
 }
