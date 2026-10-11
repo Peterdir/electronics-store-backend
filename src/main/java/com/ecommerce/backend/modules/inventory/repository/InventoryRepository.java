@@ -1,6 +1,7 @@
 package com.ecommerce.backend.modules.inventory.repository;
 
 import com.ecommerce.backend.modules.inventory.entity.Inventory;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -24,4 +25,14 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     Optional<Inventory> findByProductVariantId(Long productVariantId);
 
+    @Query("SELECT COUNT(i) FROM Inventory i WHERE i.quantity <= :threshold")
+    Long countLowStockVariants(@Param("threshold") Long threshold);
+
+    @EntityGraph(attributePaths = {"productVariant", "productVariant.product"})
+    @Query("""
+        SELECT i FROM Inventory i
+        WHERE i.quantity <= :threshold
+        ORDER BY i.quantity ASC
+    """)
+    List<Inventory> findTopLowStock(@Param("threshold") Long threshold, Pageable pageable);
 }
