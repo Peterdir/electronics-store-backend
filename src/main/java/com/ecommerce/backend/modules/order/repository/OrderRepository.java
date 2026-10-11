@@ -97,4 +97,21 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         GROUP BY o.orderStatus
     """)
     List<OrderStatusStatResponse> countOrdersByStatus(@Param("startDate") Instant startDate, @Param("endDate") Instant endDate);
+
+    @Query(value = """
+        SELECT 
+            DATE_FORMAT(created_at, '%Y-%m-%d') AS reportDate,
+            COUNT(id) AS totalOrders,
+            COALESCE(SUM(subtotal), 0) AS grossRevenue,
+            COALESCE(SUM(discount_amount), 0) AS discountAmount,
+            COALESCE(SUM(shipping_fee), 0) AS shippingFee,
+            COALESCE(SUM(total_price), 0) AS netRevenue
+        FROM orders
+        WHERE created_at >= :startDate AND created_at <= :endDate
+            AND (order_status = 'DELIVERED' 
+                OR (payment_status = 'PAID' AND order_status NOT IN ('CANCELLED', 'RETURNED')))
+        GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
+        ORDER BY reportDate ASC
+    """, nativeQuery = true)
+    List<Object[]> getDailyRevenueReportData(@Param("startDate") Instant startDate, @Param("endDate") Instant endDate);
 }
