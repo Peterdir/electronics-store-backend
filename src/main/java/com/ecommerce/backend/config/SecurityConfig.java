@@ -21,7 +21,6 @@ import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.config.Customizer;
 
 import javax.crypto.spec.SecretKeySpec;
 
@@ -38,8 +37,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
 
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/products/**").permitAll()
@@ -58,9 +56,9 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/payments/vnpay/**").permitAll()
 
-                        .anyRequest().authenticated()
-                )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
+                        .anyRequest().authenticated())
+                .oauth2ResourceServer(
+                        oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 
         return http.build();
     }
@@ -89,8 +87,8 @@ public class SecurityConfig {
             return OAuth2TokenValidatorResult.success();
         };
 
-        OAuth2TokenValidator<Jwt> delegatingValidator =
-                new DelegatingOAuth2TokenValidator<>(defaultValidator, blacklistValidator);
+        OAuth2TokenValidator<Jwt> delegatingValidator = new DelegatingOAuth2TokenValidator<>(defaultValidator,
+                blacklistValidator);
 
         jwtDecoder.setJwtValidator(delegatingValidator);
         return jwtDecoder;
