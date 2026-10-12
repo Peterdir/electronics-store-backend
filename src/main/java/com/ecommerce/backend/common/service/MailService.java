@@ -15,11 +15,11 @@ public class MailService {
     @Value("${app.mail.from:noreply@ecommerce.com}")
     private String fromAddress;
 
-    @Value("${app.base-url:http://localhost:8080}")
-    private String baseUrl;
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
 
     public void sendVerificationEmail(String toEmail, String token) {
-        String verifyUrl = baseUrl + "/api/auth/verify?token=" + token;
+        String verifyUrl = frontendUrl + "/verify-email?token=" + token;
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromAddress);
@@ -31,13 +31,13 @@ public class MailService {
     }
 
     public void sendPasswordResetEmail(String toEmail, String token) {
-        String verifyUrl = baseUrl + "/api/auth/reset-password?token=" + token;
+        String resetUrl = frontendUrl + "/reset-password?token=" + token;
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromAddress);
         message.setTo(toEmail);
         message.setSubject("Reset password");
-        message.setText("Click this link to reset password your account: " + verifyUrl);
+        message.setText("Click this link to reset password your account: " + resetUrl);
 
         mailSender.send(message);
     }
