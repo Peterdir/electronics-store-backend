@@ -2,6 +2,7 @@ package com.ecommerce.backend.modules.auth.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
+import com.ecommerce.backend.modules.auth.enums.Role;
 import com.ecommerce.backend.modules.auth.enums.UserStatus;
 import lombok.Builder;
 import lombok.Getter;
@@ -13,4 +14,5 @@ public class UserResponse {
     private Long id;
     private String email;
     private UserStatus status;
+    private Role role;
 }

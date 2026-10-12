@@ -1,6 +1,7 @@
 package com.ecommerce.backend.modules.auth.controller;
 
 import com.ecommerce.backend.modules.auth.dto.response.UserAdminResponse;
+import com.ecommerce.backend.modules.auth.enums.Role;
 import com.ecommerce.backend.modules.auth.enums.UserStatus;
 import com.ecommerce.backend.modules.auth.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 public class AdminUserController {
 
     private final UserService userService;
@@ -41,6 +42,13 @@ public class AdminUserController {
                 : "User account unlocked successfully.";
 
         return ResponseEntity.ok(message);
+    }
+
+    @PutMapping("/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> changeUserRole(@PathVariable Long id, @RequestParam Role role) {
+        userService.changeUserRole(id, role);
+        return ResponseEntity.ok("User role updated successfully to " + role + ".");
     }
 
     @GetMapping("/{id}")

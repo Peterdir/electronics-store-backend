@@ -7,11 +7,15 @@ import com.ecommerce.backend.modules.auth.dto.request.UpdateProfileRequest;
 import com.ecommerce.backend.modules.auth.dto.response.UserAdminResponse;
 import com.ecommerce.backend.modules.auth.dto.response.UserProfileResponse;
 import com.ecommerce.backend.modules.auth.entity.User;
+import com.ecommerce.backend.modules.auth.enums.Role;
 import com.ecommerce.backend.modules.auth.enums.UserStatus;
 import com.ecommerce.backend.modules.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +43,27 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            boolean isManager = auth.getAuthorities().stream().anyMatch(a -> "ROLE_MANAGER".equals(a.getAuthority()));
+            boolean isAdmin = auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+            if (isManager && !isAdmin && user.getRole() != Role.CUSTOMER) {
+                throw new AccessDeniedException("Managers are only allowed to lock or unlock Customer accounts.");
+            }
+        }
+
         user.setStatus(status);
+
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void changeUserRole(Long id, Role role) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        user.setRole(role);
 
         userRepository.save(user);
     }

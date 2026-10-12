@@ -150,6 +150,7 @@ public class AuthServiceImpl implements AuthService {
                 .id(user.getId())
                 .email(user.getEmail())
                 .status(user.getStatus())
+                .role(user.getRole())
                 .build();
 
         return AuthResponse.builder()

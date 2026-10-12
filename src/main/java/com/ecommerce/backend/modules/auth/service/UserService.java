@@ -4,6 +4,7 @@ import com.ecommerce.backend.modules.auth.dto.request.ChangePasswordRequest;
 import com.ecommerce.backend.modules.auth.dto.request.UpdateProfileRequest;
 import com.ecommerce.backend.modules.auth.dto.response.UserAdminResponse;
 import com.ecommerce.backend.modules.auth.dto.response.UserProfileResponse;
+import com.ecommerce.backend.modules.auth.enums.Role;
 import com.ecommerce.backend.modules.auth.enums.UserStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +15,9 @@ public interface UserService {
 
     // Thay đổi trạng thái của một user
     void changeUserStatus(Long id, UserStatus status);
+
+    // Thay đổi quyền của một user
+    void changeUserRole(Long id, Role role);
 
     // Có thể tạo thêm UserDetailResponse
     UserAdminResponse getUserDetails(Long id);
