@@ -15,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/coupons")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
 public class AdminCouponController {
 
     private final CouponService couponService;
@@ -26,12 +26,14 @@ public class AdminCouponController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<CouponResponse> createCoupon(@Valid @RequestBody CouponRequest request) {
         CouponResponse createdCoupon = couponService.createCoupon(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdCoupon);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<CouponResponse> updateCoupon(
             @PathVariable Long id, 
             @Valid @RequestBody CouponRequest request) {
@@ -40,6 +42,7 @@ public class AdminCouponController {
     }
 
     @PutMapping("/{id}/toggle-status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<String> toggleCouponStatus(@PathVariable Long id) {
         couponService.toggleCouponStatus(id);
         return ResponseEntity.ok("Coupon status updated successfully.");

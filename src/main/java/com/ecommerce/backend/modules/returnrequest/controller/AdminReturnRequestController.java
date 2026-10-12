@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin/return-requests")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
 public class AdminReturnRequestController {
 
     private final ReturnRequestService returnRequestService;
@@ -30,6 +30,7 @@ public class AdminReturnRequestController {
     }
 
     @PutMapping("/{id}/process")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ReturnRequestResponse> processReturnRequest(
             @PathVariable Long id,
             @Valid @RequestBody ReturnRequestProcessRequest request) {

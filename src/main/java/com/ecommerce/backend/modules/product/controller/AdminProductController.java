@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,6 +18,7 @@ import com.ecommerce.backend.modules.product.enums.ProductStatus;
 @RestController
 @RequestMapping("/api/admin/products")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
 public class AdminProductController {
 
     private final ProductService productService;
@@ -43,6 +45,7 @@ public class AdminProductController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<String> changeProductStatus(
             @PathVariable Long id,
             @RequestParam ProductStatus status) {

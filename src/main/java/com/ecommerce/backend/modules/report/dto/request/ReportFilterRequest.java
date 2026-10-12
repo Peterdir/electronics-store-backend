@@ -24,4 +24,4 @@ public class ReportFilterRequest {
     @NotNull(message = "End date is required")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate endDate;
-}
+}   

@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin/orders")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
 public class AdminOrderController {
 
     private final OrderAdminService orderAdminService;
@@ -54,6 +54,7 @@ public class AdminOrderController {
     }
 
     @PutMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<OrderDetailAdminResponse> cancelOrder(
             @PathVariable Long id,
             @Valid @RequestBody CancelOrderRequest request

@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets;
 @RestController
 @RequestMapping("/api/admin/reports")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 public class AdminReportController {
 
     private final ReportService reportService;
