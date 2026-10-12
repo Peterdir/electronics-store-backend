@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -21,9 +22,21 @@ public interface ProductService {
 
     VariantResponse getVariantDetails(Long productId, Map<String, Object> attributes);
 
-    Page<ProductResponse> searchProducts(String keyword, Pageable pageable);
+    Page<ProductResponse> searchProducts(String keyword, Long categoryId, Long brandId, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable);
 
     List<ProductCompareResponse> getProductsForComparison(List<Long> ids);
 
     List<SuggestionResponse> getSearchSuggestions(String keyword);
+
+    Page<AdminProductListResponse> getAdminProducts(String keyword, ProductStatus status, Long categoryId, Long brandId, Pageable pageable);
+
+    AdminProductDetailResponse getAdminProductDetails(Long id);
+
+    void addProductImages(Long productId, List<MultipartFile> images);
+
+    void deleteProductImage(Long productId, Long imageId);
+
+    void setPrimaryProductImage(Long productId, Long imageId);
+
+    void deleteProductVariant(Long productId, Long variantId);
 }

@@ -34,4 +34,6 @@ public class ProductDetailsResponse {
     private List<VariantResponse> variants;
 
     private Long stock;
+
+    private Double averageRating;
 }

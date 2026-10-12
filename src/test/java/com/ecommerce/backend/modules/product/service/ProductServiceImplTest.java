@@ -29,6 +29,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
@@ -462,15 +463,15 @@ class ProductServiceImplTest {
             Page<Product> productPage = new PageImpl<>(List.of(testProduct));
             ProductResponse productResponse = new ProductResponse();
 
-            when(productRepository.findByNameContainingIgnoreCaseAndStatus("iPhone", ProductStatus.ACTIVE, pageable))
+            when(productRepository.findAll(any(Specification.class), eq(pageable)))
                     .thenReturn(productPage);
             when(productMapper.toProductResponse(testProduct)).thenReturn(productResponse);
 
-            Page<ProductResponse> result = productService.searchProducts("  iPhone  ", pageable);
+            Page<ProductResponse> result = productService.searchProducts("  iPhone  ", null, null, null, null, pageable);
 
             assertNotNull(result);
             assertEquals(1, result.getTotalElements());
-            verify(productRepository, times(1)).findByNameContainingIgnoreCaseAndStatus("iPhone", ProductStatus.ACTIVE, pageable);
+            verify(productRepository, times(1)).findAll(any(Specification.class), eq(pageable));
         }
 
         @Test
@@ -479,13 +480,33 @@ class ProductServiceImplTest {
             Pageable pageable = PageRequest.of(0, 10);
             Page<Product> productPage = new PageImpl<>(Collections.emptyList());
 
-            when(productRepository.findByNameContainingIgnoreCaseAndStatus("", ProductStatus.ACTIVE, pageable))
+            when(productRepository.findAll(any(Specification.class), eq(pageable)))
                     .thenReturn(productPage);
 
-            Page<ProductResponse> result = productService.searchProducts(null, pageable);
+            Page<ProductResponse> result = productService.searchProducts(null, null, null, null, null, pageable);
 
             assertNotNull(result);
             assertTrue(result.isEmpty());
+            verify(productRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+        }
+
+        @Test
+        @DisplayName("TC-PROD-19B [Positive]: Search products with category, brand, and price range filters")
+        void searchProducts_WithAllFilters_ReturnsPage() {
+            Pageable pageable = PageRequest.of(0, 10);
+            Page<Product> productPage = new PageImpl<>(List.of(testProduct));
+            ProductResponse productResponse = new ProductResponse();
+
+            when(productRepository.findAll(any(Specification.class), eq(pageable)))
+                    .thenReturn(productPage);
+            when(productMapper.toProductResponse(testProduct)).thenReturn(productResponse);
+
+            Page<ProductResponse> result = productService.searchProducts(
+                    "iPhone", 1L, 2L, new BigDecimal("1000"), new BigDecimal("2000"), pageable);
+
+            assertNotNull(result);
+            assertEquals(1, result.getTotalElements());
+            verify(productRepository, times(1)).findAll(any(Specification.class), eq(pageable));
         }
     }
 

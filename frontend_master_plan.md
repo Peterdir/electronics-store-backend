@@ -606,7 +606,7 @@ export interface UserProfileResponse { id: ID; fullName: string | null; email: s
 
 | Method | Endpoint | Params | Response |
 |---|---|---|---|
-| GET | `/api/products` | `keyword`, `page`, `size` | `Page<ProductResponse>` *(chỉ ACTIVE)* |
+| GET | `/api/products` | `keyword?`, `categoryId?`, `brandId?`, `minPrice?`, `maxPrice?`, `page?`, `size?`, `sort?` | `Page<ProductResponse>` *(chỉ ACTIVE; sort enum: `NEWEST`, `PRICE_ASC`, `PRICE_DESC`, `RATING_DESC`, `NAME_ASC`)* |
 | GET | `/api/products/{id}` | — | `ProductDetailsResponse` |
 | GET | `/api/products/{id}/variants` | attributes dạng query (`?color=Black&storage=256GB`) | `VariantResponse` |
 | GET | `/api/products/compare` | `ids=1&ids=2` | `ProductCompareResponse[]` |
@@ -618,13 +618,14 @@ export interface UserProfileResponse { id: ID; fullName: string | null; email: s
 #### Types
 
 ```ts
+export type ProductSort = 'NEWEST' | 'PRICE_ASC' | 'PRICE_DESC' | 'RATING_DESC' | 'NAME_ASC';
 export interface ProductResponse { id: ID; name: string; basePrice: Money; primaryImageUrl: string | null;
-  categoryName: string; brandName: string | null; status: ProductStatus }
+  categoryName: string; brandName: string | null; averageRating: number | null; status: ProductStatus }
 export interface VariantResponse { id: ID; sku: string; price: Money; stock: number; imageUrl: string | null;
   attributes: Attributes; status: ProductStatus }
 export interface ProductDetailsResponse { id: ID; name: string; basePrice: Money; description: string | null;
   specification: Attributes | null; images: string[]; categoryName: string; brandName: string | null;
-  variants: VariantResponse[]; stock: number }
+  variants: VariantResponse[]; stock: number; averageRating: number | null }
 export interface ProductCompareResponse { id: ID; name: string; basePrice: Money; imageUrl: string | null;
   brandName: string | null; categoryName: string; specification: Attributes | null }
 export interface SuggestionResponse { id: ID; name: string; imageUrl: string | null; basePrice: Money }
@@ -903,13 +904,28 @@ export interface OrderDetailAdminResponse extends Omit<OrderDetailUserResponse, 
 
 | Method | Endpoint | Request | Response |
 |---|---|---|---|
-| GET | `/api/products` *(tạm dùng public — chỉ ACTIVE, Gap #7)* | `keyword, page, size` | `Page<ProductResponse>` |
-| GET | `/api/products/{id}` *(public — chỉ ACTIVE)* | — | `ProductDetailsResponse` |
+| GET | `/api/admin/products` | `keyword?, status?, categoryId?, brandId?, page, size, sortBy, direction` | `Page<AdminProductListResponse>` |
+| GET | `/api/admin/products/{id}` | — | `AdminProductDetailResponse` |
 | POST | `/api/admin/products` | **multipart**: part `data` = `JSON.stringify(AdminProductRequest)`, part `images` (nhiều file) | `text` |
-| PUT | `/api/admin/products/{id}` | **JSON** `AdminProductRequest` (không cập nhật ảnh) | `text` |
+| PUT | `/api/admin/products/{id}` | **JSON** `AdminProductRequest` | `text` |
 | PATCH | `/api/admin/products/{id}/status?status=` (A/M) | — | `text` |
+| POST | `/api/admin/products/{id}/images` | **multipart**: `images` (nhiều file) | `text` |
+| DELETE | `/api/admin/products/{id}/images/{imageId}` | — | `text` |
+| PATCH | `/api/admin/products/{id}/images/{imageId}/primary` | — | `text` |
+| DELETE | `/api/admin/products/{id}/variants/{variantId}` (A/M) | — | `text` |
 
 ```ts
+export interface AdminProductListResponse { id: ID; name: string; basePrice: Money; primaryImageUrl: string | null;
+  categoryId: ID | null; categoryName: string | null; brandId: ID | null; brandName: string | null;
+  status: ProductStatus; totalStock: number; variantCount: number; createdAt: ISODateTime; updatedAt: ISODateTime }
+
+export interface ProductImageDetailResponse { id: ID; imageUrl: string; displayOrder: number; isPrimary: boolean }
+
+export interface AdminProductDetailResponse { id: ID; name: string; basePrice: Money; description: string | null;
+  specification: Attributes | null; status: ProductStatus; categoryId: ID | null; categoryName: string | null;
+  brandId: ID | null; brandName: string | null; images: ProductImageDetailResponse[];
+  variants: VariantResponse[]; totalStock: number; createdAt: ISODateTime; updatedAt: ISODateTime }
+
 export interface AdminProductVariantRequest { sku: string; price: Money; stock: number; attributes: Attributes }
 export interface AdminProductRequest { name: string; categoryId: ID; brandId?: ID; basePrice: Money;
   description?: string; specification?: Attributes; variants: AdminProductVariantRequest[] }
@@ -917,8 +933,8 @@ export interface AdminProductRequest { name: string; categoryId: ID; brandId?: I
 
 - Form nhiều bước: *Thông tin chung* → *Thông số (key/value editor)* → *Biến thể* (`useFieldArray`; generator tổ hợp thuộc tính → sinh SKU gợi ý) → *Ảnh* (ảnh đầu tiên = primary, kéo thả sắp xếp).
 - Endpoint create **không chạy `@Valid`** (parse JSON thủ công) ⇒ Zod phía FE là tuyến phòng thủ chính: SKU duy nhất trong form, `price ≥ 0`, `stock ≥ 0`, `categoryId` bắt buộc.
-- Edit: `ProductDetailsResponse` chỉ có `categoryName/brandName` ⇒ map ngược sang ID bằng danh sách category/brand. Variant được **khớp theo SKU** ⇒ khóa ô SKU của variant đã có; không hỗ trợ xóa variant (ẩn nút xóa với variant cũ).
-- Đổi status: `ACTIVE/INACTIVE/HIDDEN` (A/M); lỗi "already in status" ⇒ refetch. Sản phẩm đã ẩn sẽ **biến mất khỏi danh sách** (do dùng endpoint public) — hiển thị cảnh báo trong confirm dialog.
+- Edit: Dùng `AdminProductDetailResponse` với `categoryId/brandId` đầy đủ để fill form trực tiếp. Có thể upload thêm ảnh qua `POST /images`, xóa ảnh qua `DELETE /images/{id}`, đổi ảnh đại diện qua `PATCH /images/{id}/primary`, và xóa variant qua `DELETE /variants/{id}`.
+- Đổi status: `ACTIVE/INACTIVE/HIDDEN` (A/M); danh sách admin lọc được theo mọi trạng thái mà không bị biến mất sản phẩm inactive.
 
 **Inventory** 🛡️ A/M/S — `/admin/inventory`
 
@@ -1070,30 +1086,28 @@ export interface RevenueReportResponse { startDate: ISODate; endDate: ISODate; t
 
 | # | Mức độ | Vấn đề | Vị trí | Đề xuất |
 |---|---|---|---|---|
-| 1 | 🟠 High | Không có admin endpoint list/detail product (public chỉ trả ACTIVE) ⇒ không quản lý được sản phẩm INACTIVE/HIDDEN; detail thiếu `categoryId/brandId`; không cập nhật ảnh/xóa variant | product module | `GET /api/admin/products` (filter status), `GET /api/admin/products/{id}`, endpoint quản lý ảnh |
-| 2 | 🟠 High | Product search chỉ có `keyword` (không category/brand/giá/sort) | `ProductController` | Thêm `categoryId, brandId, minPrice, maxPrice, sort` |
-| 3 | 🟠 High | Không có endpoint lấy review công khai theo sản phẩm (PDP không hiển thị đánh giá/điểm TB) | review module | `GET /api/products/{id}/reviews` + `averageRating` trong response |
-| 4 | 🟠 High | Không có endpoint validate coupon trước khi đặt hàng | coupon module | `GET /api/coupons/validate?code=&subtotal=` |
-| 5 | 🟡 Medium | Không có refresh token (24h) | auth | `POST /api/auth/refresh` + httpOnly cookie (FE đã sẵn hook) |
-| 6 | 🟡 Medium | Không có upload ảnh review (chỉ nhận `imageUrl`) | review | Multipart như return request |
-| 7 | 🟡 Medium | Khách không xem được danh sách yêu cầu trả hàng; admin không có detail | returnrequest | `GET /api/return-requests/me`, `GET /api/admin/return-requests/{id}` |
-| 8 | 🟡 Medium | `/api/inventory/**` được permitAll nhưng không có controller public | SecurityConfig | Xóa matcher hoặc bổ sung endpoint stock public |
-| 9 | 🟡 Medium | Inventory & Coupon list không phân trang | admin | Thêm `Pageable` |
-| 10 | 🟡 Medium | STAFF có thể chuyển đơn sang `CANCELLED` qua `/status` (bỏ qua lý do & phân quyền cancel) | `OrderAdminServiceImpl` | Chặn `CANCELLED` trong `updateOrderStatus` |
-| 11 | 🟢 Low | Login sai email trả 404 (lộ thông tin tài khoản tồn tại) | `AuthServiceImpl` | Trả 400 thống nhất |
-| 12 | 🟢 Low | `verifyEmail` không trả `user`; Register không có `fullName` | auth | Bổ sung `user` vào `AuthResponse` |
-| 13 | 🟢 Low | Nhiều endpoint trả plain text thay vì `MessageResponse` | users/products/coupons | Thống nhất `MessageResponse` |
-| 14 | 🟢 Low | Category có `logo` trong request nhưng không có trong response / không upload | category | Đồng bộ với Brand |
-| 15 | 🟢 Low | Shipping method/phí hard-code (30k/55k), không có endpoint | checkout | `GET /api/shipping-methods` |
-| 16 | 🟢 Low | Chưa cấu hình `PageSerializationMode` ⇒ shape `Page` không ổn định giữa các phiên bản | config | `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` |
+| 1 | 🟠 High | Không có endpoint lấy review công khai theo sản phẩm (PDP không hiển thị đánh giá/điểm TB) | review module | `GET /api/products/{id}/reviews` + `averageRating` trong response |
+| 2 | 🟠 High | Không có endpoint validate coupon trước khi đặt hàng | coupon module | `GET /api/coupons/validate?code=&subtotal=` |
+| 3 | 🟡 Medium | Không có refresh token (24h) | auth | `POST /api/auth/refresh` + httpOnly cookie (FE đã sẵn hook) |
+| 4 | 🟡 Medium | Không có upload ảnh review (chỉ nhận `imageUrl`) | review | Multipart như return request |
+| 5 | 🟡 Medium | Khách không xem được danh sách yêu cầu trả hàng; admin không có detail | returnrequest | `GET /api/return-requests/me`, `GET /api/admin/return-requests/{id}` |
+| 6 | 🟡 Medium | `/api/inventory/**` được permitAll nhưng không có controller public | SecurityConfig | Xóa matcher hoặc bổ sung endpoint stock public |
+| 7 | 🟡 Medium | Inventory & Coupon list không phân trang | admin | Thêm `Pageable` |
+| 8 | 🟡 Medium | STAFF có thể chuyển đơn sang `CANCELLED` qua `/status` (bỏ qua lý do & phân quyền cancel) | `OrderAdminServiceImpl` | Chặn `CANCELLED` trong `updateOrderStatus` |
+| 9 | 🟢 Low | Login sai email trả 404 (lộ thông tin tài khoản tồn tại) | `AuthServiceImpl` | Trả 400 thống nhất |
+| 10 | 🟢 Low | `verifyEmail` không trả `user`; Register không có `fullName` | auth | Bổ sung `user` vào `AuthResponse` |
+| 11 | 🟢 Low | Nhiều endpoint trả plain text thay vì `MessageResponse` | users/products/coupons | Thống nhất `MessageResponse` |
+| 12 | 🟢 Low | Category có `logo` trong request nhưng không có trong response / không upload | category | Đồng bộ với Brand |
+| 13 | 🟢 Low | Shipping method/phí hard-code (30k/55k), không có endpoint | checkout | `GET /api/shipping-methods` |
+| 14 | 🟢 Low | Chưa cấu hình `PageSerializationMode` ⇒ shape `Page` không ổn định giữa các phiên bản | config | `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` |
 
 > [!NOTE]
-> Tất cả các lỗi 🔴 **Blocker** ban đầu (CORS, link email xác thực/reset, đổi mật khẩu UserController, và ép kiểu TSID String cho AdminReviewResponse/OrderDetailAdminResponse) đều đã được backend khắc phục hoàn toàn. Các mục còn lại dưới đây là các gap chức năng mở rộng (High/Medium/Low) có thể phối hợp bổ sung theo từng Sprint/Phase.
+> Tất cả các lỗi 🔴 **Blocker** ban đầu (CORS, link email xác thực/reset, đổi mật khẩu UserController, và ép kiểu TSID String cho AdminReviewResponse/OrderDetailAdminResponse), gap quản lý sản phẩm cho Admin (`GET list/detail`, quản lý ảnh, xóa variant), cũng như **tính năng tìm kiếm/lọc sản phẩm đa tiêu chí** (`categoryId, brandId, minPrice, maxPrice, sort`) đều đã được backend khắc phục hoàn toàn. Các mục còn lại dưới đây là các gap chức năng mở rộng (High/Medium/Low) có thể phối hợp bổ sung theo từng Sprint/Phase.
 
 ---
 
 ## 8. Câu hỏi mở cần chốt
 1. **UI library**: Tailwind v4 + shadcn/ui cho cả 2 phân hệ (đề xuất), hay Ant Design cho Admin để tăng tốc?
 2. **Lưu token**: `localStorage` (đơn giản, phù hợp khi chưa có refresh cookie) — chấp nhận rủi ro XSS kèm CSP?
-3. Team backend có thể xử lý nhóm Gap High (#1/#2/#3/#4) trong sprint đầu không? Nếu không, FE sẽ ẩn các tính năng liên quan (filter, review công khai, preview coupon).
+3. Team backend có thể xử lý nhóm Gap High còn lại (#1 review công khai, #2 preview coupon) trong sprint đầu không? Nếu không, FE sẽ tạm thời ẩn đánh giá/preview coupon.
 4. Một repo FE với 2 layout (đề xuất) hay tách 2 app (storefront / admin)?

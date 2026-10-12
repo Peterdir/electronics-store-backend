@@ -26,6 +26,8 @@ public class ProductResponse {
 
     private String brandName;
 
+    private Double averageRating;
+
     private ProductStatus status;
 
 }

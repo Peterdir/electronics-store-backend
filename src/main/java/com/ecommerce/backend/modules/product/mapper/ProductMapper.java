@@ -6,7 +6,7 @@ import com.ecommerce.backend.modules.product.entity.ProductImage;
 import com.ecommerce.backend.modules.product.entity.ProductVariant;
 import org.springframework.stereotype.Component;
 
-import java.util.stream.Collectors;
+import java.util.List;
 
 @Component
 public class ProductMapper {
@@ -25,10 +25,11 @@ public class ProductMapper {
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
                 .brandName(product.getBrand() != null ? product.getBrand().getName() : null)
                 .images(product.getProductImages() != null ? 
-                        product.getProductImages().stream().map(ProductImage::getImageUrl).collect(Collectors.toList()) : null)
+                        product.getProductImages().stream().map(ProductImage::getImageUrl).toList() : null)
                 .variants(product.getVariants() != null ? 
-                        product.getVariants().stream().map(this::toVariantResponse).collect(Collectors.toList()) : null)
+                        product.getVariants().stream().map(this::toVariantResponse).toList() : null)
                 .stock(totalStock)
+                .averageRating(product.getAverageRating())
                 .build();
     }
 
@@ -65,6 +66,7 @@ public class ProductMapper {
                 .primaryImageUrl(primaryImageUrl)
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
                 .brandName(product.getBrand() != null ? product.getBrand().getName() : null)
+                .averageRating(product.getAverageRating())
                 .status(product.getStatus())
                 .build();
     }
@@ -99,6 +101,91 @@ public class ProductMapper {
                 .name(product.getName())
                 .basePrice(product.getBasePrice())
                 .imageUrl(primaryImageUrl)
+                .build();
+    }
+
+    public AdminProductListResponse toAdminProductListResponse(Product product) {
+        if (product == null) {
+            return null;
+        }
+
+        Long totalStock = product.getVariants() != null
+                ? product.getVariants().stream()
+                .map(v -> v.getInventory() != null && v.getInventory().getQuantity() != null ? v.getInventory().getQuantity() : 0L)
+                .reduce(0L, Long::sum)
+                : 0L;
+
+        int variantCount = product.getVariants() != null ? product.getVariants().size() : 0;
+
+        return AdminProductListResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .basePrice(product.getBasePrice())
+                .primaryImageUrl(getPrimaryImageUrl(product))
+                .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
+                .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
+                .brandId(product.getBrand() != null ? product.getBrand().getId() : null)
+                .brandName(product.getBrand() != null ? product.getBrand().getName() : null)
+                .status(product.getStatus())
+                .totalStock(totalStock)
+                .variantCount(variantCount)
+                .createdAt(product.getCreatedAt())
+                .updatedAt(product.getUpdatedAt())
+                .build();
+    }
+
+    public AdminProductDetailResponse toAdminProductDetailResponse(Product product) {
+        if (product == null) {
+            return null;
+        }
+
+        Long totalStock = product.getVariants() != null
+                ? product.getVariants().stream()
+                .map(v -> v.getInventory() != null && v.getInventory().getQuantity() != null ? v.getInventory().getQuantity() : 0L)
+                .reduce(0L, Long::sum)
+                : 0L;
+
+        List<ProductImageDetailResponse> imageResponses = product.getProductImages() != null
+                ? product.getProductImages().stream()
+                .map(this::toProductImageDetailResponse)
+                .toList()
+                : List.of();
+
+        List<VariantResponse> variantResponses = product.getVariants() != null
+                ? product.getVariants().stream()
+                .map(this::toVariantResponse)
+                .toList()
+                : List.of();
+
+        return AdminProductDetailResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .basePrice(product.getBasePrice())
+                .description(product.getDescription())
+                .specification(product.getSpecification())
+                .status(product.getStatus())
+                .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
+                .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
+                .brandId(product.getBrand() != null ? product.getBrand().getId() : null)
+                .brandName(product.getBrand() != null ? product.getBrand().getName() : null)
+                .images(imageResponses)
+                .variants(variantResponses)
+                .totalStock(totalStock)
+                .createdAt(product.getCreatedAt())
+                .updatedAt(product.getUpdatedAt())
+                .build();
+    }
+
+    public ProductImageDetailResponse toProductImageDetailResponse(ProductImage image) {
+        if (image == null) {
+            return null;
+        }
+
+        return ProductImageDetailResponse.builder()
+                .id(image.getId())
+                .imageUrl(image.getImageUrl())
+                .displayOrder(image.getDisplayOrder())
+                .isPrimary(image.getIsPrimary())
                 .build();
     }
 

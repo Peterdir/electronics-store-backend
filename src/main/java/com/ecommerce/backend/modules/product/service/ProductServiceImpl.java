@@ -11,9 +11,12 @@ import com.ecommerce.backend.modules.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
@@ -224,15 +227,43 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ProductResponse> searchProducts(String keyword, Pageable pageable) {
-        String searchKeyword = (keyword != null) ? keyword.trim() : "";
+    public Page<ProductResponse> searchProducts(
+            String keyword,
+            Long categoryId,
+            Long brandId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Pageable pageable) {
 
-        Page<Product> productPage = productRepository.findByNameContainingIgnoreCaseAndStatus(
-                searchKeyword,
-                ProductStatus.ACTIVE,
-                pageable
-        );
+        Specification<Product> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
 
+            predicates.add(cb.equal(root.get("status"), ProductStatus.ACTIVE));
+
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("name")), "%" + keyword.trim().toLowerCase() + "%"));
+            }
+
+            if (categoryId != null) {
+                predicates.add(cb.equal(root.get("category").get("id"), categoryId));
+            }
+
+            if (brandId != null) {
+                predicates.add(cb.equal(root.get("brand").get("id"), brandId));
+            }
+
+            if (minPrice != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("basePrice"), minPrice));
+            }
+
+            if (maxPrice != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("basePrice"), maxPrice));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Product> productPage = productRepository.findAll(spec, pageable);
         return productPage.map(productMapper::toProductResponse);
     }
 
@@ -262,5 +293,124 @@ public class ProductServiceImpl implements ProductService {
         return topProducts.stream()
                 .map(productMapper::toSuggestionResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminProductListResponse> getAdminProducts(
+            String keyword,
+            ProductStatus status,
+            Long categoryId,
+            Long brandId,
+            Pageable pageable) {
+
+        Specification<Product> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("name")), "%" + keyword.trim().toLowerCase() + "%"));
+            }
+
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+
+            if (categoryId != null) {
+                predicates.add(cb.equal(root.get("category").get("id"), categoryId));
+            }
+
+            if (brandId != null) {
+                predicates.add(cb.equal(root.get("brand").get("id"), brandId));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Product> page = productRepository.findAll(spec, pageable);
+        return page.map(productMapper::toAdminProductListResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminProductDetailResponse getAdminProductDetails(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+
+        return productMapper.toAdminProductDetailResponse(product);
+    }
+
+    @Override
+    @Transactional
+    public void addProductImages(Long productId, List<MultipartFile> images) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+
+        if (images != null && !images.isEmpty()) {
+            int displayOrder = product.getProductImages().size();
+            boolean hasPrimary = product.getProductImages().stream()
+                    .anyMatch(img -> Boolean.TRUE.equals(img.getIsPrimary()));
+
+            for (MultipartFile file : images) {
+                FileValidator.validateImageFile(file);
+                String imageUrl = fileStorageService.uploadFile(file, "products");
+                product.getProductImages().add(ProductImage.builder()
+                        .imageUrl(imageUrl)
+                        .displayOrder(displayOrder++)
+                        .isPrimary(!hasPrimary && displayOrder == 1)
+                        .product(product)
+                        .build());
+            }
+            productRepository.save(product);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteProductImage(Long productId, Long imageId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+
+        boolean removed = product.getProductImages().removeIf(img -> img.getId().equals(imageId));
+        if (!removed) {
+            throw new ResourceNotFoundException("Image not found");
+        }
+
+        boolean hasPrimary = product.getProductImages().stream()
+                .anyMatch(img -> Boolean.TRUE.equals(img.getIsPrimary()));
+        if (!hasPrimary && !product.getProductImages().isEmpty()) {
+            product.getProductImages().getFirst().setIsPrimary(true);
+        }
+
+        productRepository.save(product);
+    }
+
+    @Override
+    @Transactional
+    public void setPrimaryProductImage(Long productId, Long imageId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+
+        ProductImage target = product.getProductImages().stream()
+                .filter(img -> img.getId().equals(imageId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
+
+        product.getProductImages().forEach(img -> img.setIsPrimary(img == target));
+        productRepository.save(product);
+    }
+
+    @Override
+    @Transactional
+    public void deleteProductVariant(Long productId, Long variantId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+
+        ProductVariant variant = product.getVariants().stream()
+                .filter(v -> v.getId().equals(variantId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Variant not found"));
+
+        variant.setStatus(ProductStatus.INACTIVE);
+        productRepository.save(product);
     }
 }
