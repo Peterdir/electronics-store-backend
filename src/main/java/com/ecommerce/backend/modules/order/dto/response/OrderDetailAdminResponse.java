@@ -19,6 +19,7 @@ public class OrderDetailAdminResponse {
     private Long id;
 
     // Thông tin khách hàng
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long userId;
     private String customerName;
     private String customerEmail;

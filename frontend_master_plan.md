@@ -10,7 +10,7 @@
 | # | Phát hiện | Tác động lên FE |
 |---|---|---|
 | 1 | **Không có refresh token**. Access token HS256, sống **24h**, logout = blacklist trên Redis | Interceptor "auto refresh 401" phải thiết kế dạng *pluggable*; hiện tại 401 ⇒ logout + redirect |
-| 2 | **Mọi ID là TSID 64-bit** (vượt `Number.MAX_SAFE_INTEGER`) | Bắt buộc `type ID = string` toàn bộ FE. 2 field backend **quên** `@JsonFormat(STRING)` ⇒ mất chính xác |
+| 2 | **Mọi ID là TSID 64-bit** (vượt `Number.MAX_SAFE_INTEGER`) | Bắt buộc `type ID = string` toàn bộ FE. Backend đã format đầy đủ `@JsonFormat(STRING)` cho các DTO (kể cả `AdminReviewResponse.id` và `OrderDetailAdminResponse.userId`) |
 | 3 | **Không có CORS config** trong `SecurityConfig` | Dev: dùng Vite proxy. Prod: cần reverse proxy cùng origin hoặc thêm CORS |
 | 4 | Endpoint `permitAll` **vẫn trả 401** nếu gửi Bearer token hết hạn/bị blacklist | Interceptor phải retry request public *không kèm token* |
 | 5 | VNPay `return-url = http://localhost:3000/payment/result` | Vite dev server chạy **port 3000**; FE có route `/payment/result` |
@@ -872,7 +872,7 @@ export interface ReturnRequestResponse { id: ID; orderId: ID; orderItemId: ID; q
 export interface OrderListAdminResponse { id: ID; customerName: string | null; customerEmail: string | null;
   totalPrice: Money; orderDate: ISODateTime; paymentStatus: PaymentStatus; orderStatus: OrderStatus }
 export interface OrderDetailAdminResponse extends Omit<OrderDetailUserResponse, 'canCancel' | 'canPay' | 'canBuyAgain'> {
-  userId: ID | null /* ⚠️ Gap #5 */; customerName: string | null; customerEmail: string | null }
+  userId: ID | null; customerName: string | null; customerEmail: string | null }
 ```
 
 - Dropdown trạng thái chỉ liệt kê `ORDER_TRANSITIONS[current]` **trừ `CANCELLED`** (hủy đi qua dialog riêng có lý do, chỉ A/M). Confirm trước khi đổi; hiển thị `message` trả về (vd. chuyển sang PENDING_REFUND).
@@ -961,7 +961,7 @@ export interface InventoryHistoryResponse { id: ID; action: InventoryAction; qua
 | POST | `/api/admin/reviews/{id}/reply` | `{ replyText }` | `MessageResponse` |
 
 ```ts
-export interface AdminReviewResponse { id: ID /* ⚠️ Gap #5: BE đang trả number */; productName: string;
+export interface AdminReviewResponse { id: ID; productName: string;
   customerName: string | null; rating: number; reviewText: string | null; createdAt: ISODateTime;
   hidden: boolean; adminReply: string | null }
 ```
@@ -1072,26 +1072,25 @@ export interface RevenueReportResponse { startDate: ISODate; endDate: ISODate; t
 |---|---|---|---|---|
 | 1 | 🔴 Blocker (prod) | Không cấu hình CORS | [SecurityConfig.java](file:///d:/Subject/TLCN/FinalProject/ecommerce-backend/src/main/java/com/ecommerce/backend/config/SecurityConfig.java) | Thêm `CorsConfigurationSource` (origin FE) hoặc deploy cùng origin qua reverse proxy |
 | 2 | 🔴 Blocker | Link email trỏ vào API backend; link reset là GET tới endpoint POST ⇒ hỏng | [MailService.java](file:///d:/Subject/TLCN/FinalProject/ecommerce-backend/src/main/java/com/ecommerce/backend/common/service/MailService.java) | Thêm `app.frontend-url`; link `→ {fe}/verify-email?token=` và `{fe}/reset-password?token=` |
-| 3 | 🔴 Blocker | `AdminReviewResponse.id`, `OrderDetailAdminResponse.userId` thiếu `@JsonFormat(STRING)` ⇒ JS làm tròn TSID, toggle/reply review sai ID | review & order DTO | Thêm `@JsonFormat(shape = STRING)` |
-| 4 | 🟠 High | Không có admin endpoint list/detail product (public chỉ trả ACTIVE) ⇒ không quản lý được sản phẩm INACTIVE/HIDDEN; detail thiếu `categoryId/brandId`; không cập nhật ảnh/xóa variant | product module | `GET /api/admin/products` (filter status), `GET /api/admin/products/{id}`, endpoint quản lý ảnh |
-| 5 | 🟠 High | Product search chỉ có `keyword` (không category/brand/giá/sort) | `ProductController` | Thêm `categoryId, brandId, minPrice, maxPrice, sort` |
-| 6 | 🟠 High | Không có endpoint lấy review công khai theo sản phẩm (PDP không hiển thị đánh giá/điểm TB) | review module | `GET /api/products/{id}/reviews` + `averageRating` trong response |
-| 7 | 🟠 High | Không có endpoint validate coupon trước khi đặt hàng | coupon module | `GET /api/coupons/validate?code=&subtotal=` |
-| 8 | 🟡 Medium | Không có refresh token (24h) | auth | `POST /api/auth/refresh` + httpOnly cookie (FE đã sẵn hook) |
-| 9 | 🟡 Medium | Không có upload ảnh review (chỉ nhận `imageUrl`) | review | Multipart như return request |
-| 10 | 🟡 Medium | Khách không xem được danh sách yêu cầu trả hàng; admin không có detail | returnrequest | `GET /api/return-requests/me`, `GET /api/admin/return-requests/{id}` |
-| 11 | 🟡 Medium | `/api/inventory/**` được permitAll nhưng không có controller public | SecurityConfig | Xóa matcher hoặc bổ sung endpoint stock public |
-| 12 | 🟡 Medium | Inventory & Coupon list không phân trang | admin | Thêm `Pageable` |
-| 13 | 🟡 Medium | STAFF có thể chuyển đơn sang `CANCELLED` qua `/status` (bỏ qua lý do & phân quyền cancel) | `OrderAdminServiceImpl` | Chặn `CANCELLED` trong `updateOrderStatus` |
-| 14 | 🟢 Low | Login sai email trả 404 (lộ thông tin tài khoản tồn tại) | `AuthServiceImpl` | Trả 400 thống nhất |
-| 15 | 🟢 Low | `verifyEmail` không trả `user`; Register không có `fullName` | auth | Bổ sung `user` vào `AuthResponse` |
-| 16 | 🟢 Low | Nhiều endpoint trả plain text thay vì `MessageResponse` | users/products/coupons | Thống nhất `MessageResponse` |
-| 17 | 🟢 Low | Category có `logo` trong request nhưng không có trong response / không upload | category | Đồng bộ với Brand |
-| 18 | 🟢 Low | Shipping method/phí hard-code (30k/55k), không có endpoint | checkout | `GET /api/shipping-methods` |
-| 19 | 🟢 Low | Chưa cấu hình `PageSerializationMode` ⇒ shape `Page` không ổn định giữa các phiên bản | config | `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` |
+| 3 | 🟠 High | Không có admin endpoint list/detail product (public chỉ trả ACTIVE) ⇒ không quản lý được sản phẩm INACTIVE/HIDDEN; detail thiếu `categoryId/brandId`; không cập nhật ảnh/xóa variant | product module | `GET /api/admin/products` (filter status), `GET /api/admin/products/{id}`, endpoint quản lý ảnh |
+| 4 | 🟠 High | Product search chỉ có `keyword` (không category/brand/giá/sort) | `ProductController` | Thêm `categoryId, brandId, minPrice, maxPrice, sort` |
+| 5 | 🟠 High | Không có endpoint lấy review công khai theo sản phẩm (PDP không hiển thị đánh giá/điểm TB) | review module | `GET /api/products/{id}/reviews` + `averageRating` trong response |
+| 6 | 🟠 High | Không có endpoint validate coupon trước khi đặt hàng | coupon module | `GET /api/coupons/validate?code=&subtotal=` |
+| 7 | 🟡 Medium | Không có refresh token (24h) | auth | `POST /api/auth/refresh` + httpOnly cookie (FE đã sẵn hook) |
+| 8 | 🟡 Medium | Không có upload ảnh review (chỉ nhận `imageUrl`) | review | Multipart như return request |
+| 9 | 🟡 Medium | Khách không xem được danh sách yêu cầu trả hàng; admin không có detail | returnrequest | `GET /api/return-requests/me`, `GET /api/admin/return-requests/{id}` |
+| 10 | 🟡 Medium | `/api/inventory/**` được permitAll nhưng không có controller public | SecurityConfig | Xóa matcher hoặc bổ sung endpoint stock public |
+| 11 | 🟡 Medium | Inventory & Coupon list không phân trang | admin | Thêm `Pageable` |
+| 12 | 🟡 Medium | STAFF có thể chuyển đơn sang `CANCELLED` qua `/status` (bỏ qua lý do & phân quyền cancel) | `OrderAdminServiceImpl` | Chặn `CANCELLED` trong `updateOrderStatus` |
+| 13 | 🟢 Low | Login sai email trả 404 (lộ thông tin tài khoản tồn tại) | `AuthServiceImpl` | Trả 400 thống nhất |
+| 14 | 🟢 Low | `verifyEmail` không trả `user`; Register không có `fullName` | auth | Bổ sung `user` vào `AuthResponse` |
+| 15 | 🟢 Low | Nhiều endpoint trả plain text thay vì `MessageResponse` | users/products/coupons | Thống nhất `MessageResponse` |
+| 16 | 🟢 Low | Category có `logo` trong request nhưng không có trong response / không upload | category | Đồng bộ với Brand |
+| 17 | 🟢 Low | Shipping method/phí hard-code (30k/55k), không có endpoint | checkout | `GET /api/shipping-methods` |
+| 18 | 🟢 Low | Chưa cấu hình `PageSerializationMode` ⇒ shape `Page` không ổn định giữa các phiên bản | config | `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` |
 
 > [!IMPORTANT]
-> Gap #2, #3 (trước đây là #4) nên được sửa **trước khi bắt đầu P1/P5** vì chúng làm hỏng luồng chính *(lỗi đổi mật khẩu UserController trước đây là Blocker #3 đã được giải quyết)*. Gap #1 bắt buộc trước khi deploy.
+> Gap #2 nên được sửa **trước khi bắt đầu P1** vì nó làm hỏng luồng xác thực/reset mật khẩu. Gap #1 bắt buộc trước khi deploy. *(Các lỗi Blocker trước đây về đổi mật khẩu UserController và ép kiểu TSID String cho AdminReviewResponse/OrderDetailAdminResponse đã được backend giải quyết)*.
 
 ---
 
