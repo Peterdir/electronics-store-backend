@@ -11,7 +11,7 @@
 |---|---|---|
 | 1 | **Không có refresh token**. Access token HS256, sống **24h**, logout = blacklist trên Redis | Interceptor "auto refresh 401" phải thiết kế dạng *pluggable*; hiện tại 401 ⇒ logout + redirect |
 | 2 | **Mọi ID là TSID 64-bit** (vượt `Number.MAX_SAFE_INTEGER`) | Bắt buộc `type ID = string` toàn bộ FE. Backend đã format đầy đủ `@JsonFormat(STRING)` cho các DTO (kể cả `AdminReviewResponse.id` và `OrderDetailAdminResponse.userId`) |
-| 3 | **Không có CORS config** trong `SecurityConfig` | Dev: dùng Vite proxy. Prod: cần reverse proxy cùng origin hoặc thêm CORS |
+| 3 | **CORS** đã được cấu hình trong `SecurityConfig` | Cho phép origin Frontend (`http://localhost:3000`, `http://localhost:5173`), hỗ trợ credentials & headers chuẩn |
 | 4 | Endpoint `permitAll` **vẫn trả 401** nếu gửi Bearer token hết hạn/bị blacklist | Interceptor phải retry request public *không kèm token* |
 | 5 | VNPay `return-url = http://localhost:3000/payment/result` | Vite dev server chạy **port 3000**; FE có route `/payment/result` |
 | 6 | **Link email verify/reset** trỏ sang Frontend | Backend đã cấu hình `app.frontend-url` (port 3000), link trỏ đúng tới FE `/verify-email` và `/reset-password` |
@@ -1070,31 +1070,30 @@ export interface RevenueReportResponse { startDate: ISODate; endDate: ISODate; t
 
 | # | Mức độ | Vấn đề | Vị trí | Đề xuất |
 |---|---|---|---|---|
-| 1 | 🔴 Blocker (prod) | Không cấu hình CORS | [SecurityConfig.java](file:///d:/Subject/TLCN/FinalProject/ecommerce-backend/src/main/java/com/ecommerce/backend/config/SecurityConfig.java) | Thêm `CorsConfigurationSource` (origin FE) hoặc deploy cùng origin qua reverse proxy |
-| 2 | 🟠 High | Không có admin endpoint list/detail product (public chỉ trả ACTIVE) ⇒ không quản lý được sản phẩm INACTIVE/HIDDEN; detail thiếu `categoryId/brandId`; không cập nhật ảnh/xóa variant | product module | `GET /api/admin/products` (filter status), `GET /api/admin/products/{id}`, endpoint quản lý ảnh |
-| 3 | 🟠 High | Product search chỉ có `keyword` (không category/brand/giá/sort) | `ProductController` | Thêm `categoryId, brandId, minPrice, maxPrice, sort` |
-| 4 | 🟠 High | Không có endpoint lấy review công khai theo sản phẩm (PDP không hiển thị đánh giá/điểm TB) | review module | `GET /api/products/{id}/reviews` + `averageRating` trong response |
-| 5 | 🟠 High | Không có endpoint validate coupon trước khi đặt hàng | coupon module | `GET /api/coupons/validate?code=&subtotal=` |
-| 6 | 🟡 Medium | Không có refresh token (24h) | auth | `POST /api/auth/refresh` + httpOnly cookie (FE đã sẵn hook) |
-| 7 | 🟡 Medium | Không có upload ảnh review (chỉ nhận `imageUrl`) | review | Multipart như return request |
-| 8 | 🟡 Medium | Khách không xem được danh sách yêu cầu trả hàng; admin không có detail | returnrequest | `GET /api/return-requests/me`, `GET /api/admin/return-requests/{id}` |
-| 9 | 🟡 Medium | `/api/inventory/**` được permitAll nhưng không có controller public | SecurityConfig | Xóa matcher hoặc bổ sung endpoint stock public |
-| 10 | 🟡 Medium | Inventory & Coupon list không phân trang | admin | Thêm `Pageable` |
-| 11 | 🟡 Medium | STAFF có thể chuyển đơn sang `CANCELLED` qua `/status` (bỏ qua lý do & phân quyền cancel) | `OrderAdminServiceImpl` | Chặn `CANCELLED` trong `updateOrderStatus` |
-| 12 | 🟢 Low | Login sai email trả 404 (lộ thông tin tài khoản tồn tại) | `AuthServiceImpl` | Trả 400 thống nhất |
-| 13 | 🟢 Low | `verifyEmail` không trả `user`; Register không có `fullName` | auth | Bổ sung `user` vào `AuthResponse` |
-| 14 | 🟢 Low | Nhiều endpoint trả plain text thay vì `MessageResponse` | users/products/coupons | Thống nhất `MessageResponse` |
-| 15 | 🟢 Low | Category có `logo` trong request nhưng không có trong response / không upload | category | Đồng bộ với Brand |
-| 16 | 🟢 Low | Shipping method/phí hard-code (30k/55k), không có endpoint | checkout | `GET /api/shipping-methods` |
-| 17 | 🟢 Low | Chưa cấu hình `PageSerializationMode` ⇒ shape `Page` không ổn định giữa các phiên bản | config | `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` |
+| 1 | 🟠 High | Không có admin endpoint list/detail product (public chỉ trả ACTIVE) ⇒ không quản lý được sản phẩm INACTIVE/HIDDEN; detail thiếu `categoryId/brandId`; không cập nhật ảnh/xóa variant | product module | `GET /api/admin/products` (filter status), `GET /api/admin/products/{id}`, endpoint quản lý ảnh |
+| 2 | 🟠 High | Product search chỉ có `keyword` (không category/brand/giá/sort) | `ProductController` | Thêm `categoryId, brandId, minPrice, maxPrice, sort` |
+| 3 | 🟠 High | Không có endpoint lấy review công khai theo sản phẩm (PDP không hiển thị đánh giá/điểm TB) | review module | `GET /api/products/{id}/reviews` + `averageRating` trong response |
+| 4 | 🟠 High | Không có endpoint validate coupon trước khi đặt hàng | coupon module | `GET /api/coupons/validate?code=&subtotal=` |
+| 5 | 🟡 Medium | Không có refresh token (24h) | auth | `POST /api/auth/refresh` + httpOnly cookie (FE đã sẵn hook) |
+| 6 | 🟡 Medium | Không có upload ảnh review (chỉ nhận `imageUrl`) | review | Multipart như return request |
+| 7 | 🟡 Medium | Khách không xem được danh sách yêu cầu trả hàng; admin không có detail | returnrequest | `GET /api/return-requests/me`, `GET /api/admin/return-requests/{id}` |
+| 8 | 🟡 Medium | `/api/inventory/**` được permitAll nhưng không có controller public | SecurityConfig | Xóa matcher hoặc bổ sung endpoint stock public |
+| 9 | 🟡 Medium | Inventory & Coupon list không phân trang | admin | Thêm `Pageable` |
+| 10 | 🟡 Medium | STAFF có thể chuyển đơn sang `CANCELLED` qua `/status` (bỏ qua lý do & phân quyền cancel) | `OrderAdminServiceImpl` | Chặn `CANCELLED` trong `updateOrderStatus` |
+| 11 | 🟢 Low | Login sai email trả 404 (lộ thông tin tài khoản tồn tại) | `AuthServiceImpl` | Trả 400 thống nhất |
+| 12 | 🟢 Low | `verifyEmail` không trả `user`; Register không có `fullName` | auth | Bổ sung `user` vào `AuthResponse` |
+| 13 | 🟢 Low | Nhiều endpoint trả plain text thay vì `MessageResponse` | users/products/coupons | Thống nhất `MessageResponse` |
+| 14 | 🟢 Low | Category có `logo` trong request nhưng không có trong response / không upload | category | Đồng bộ với Brand |
+| 15 | 🟢 Low | Shipping method/phí hard-code (30k/55k), không có endpoint | checkout | `GET /api/shipping-methods` |
+| 16 | 🟢 Low | Chưa cấu hình `PageSerializationMode` ⇒ shape `Page` không ổn định giữa các phiên bản | config | `@EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)` |
 
-> [!IMPORTANT]
-> Gap #1 (CORS) là blocker cần được cấu hình trước khi deploy production (hoặc cấu hình reverse proxy cùng origin). *(Tất cả các lỗi Blocker nghiêm trọng trước đây về link email xác thực/reset, đổi mật khẩu UserController, và ép kiểu TSID String cho AdminReviewResponse/OrderDetailAdminResponse đều đã được backend khắc phục)*.
+> [!NOTE]
+> Tất cả các lỗi 🔴 **Blocker** ban đầu (CORS, link email xác thực/reset, đổi mật khẩu UserController, và ép kiểu TSID String cho AdminReviewResponse/OrderDetailAdminResponse) đều đã được backend khắc phục hoàn toàn. Các mục còn lại dưới đây là các gap chức năng mở rộng (High/Medium/Low) có thể phối hợp bổ sung theo từng Sprint/Phase.
 
 ---
 
 ## 8. Câu hỏi mở cần chốt
 1. **UI library**: Tailwind v4 + shadcn/ui cho cả 2 phân hệ (đề xuất), hay Ant Design cho Admin để tăng tốc?
 2. **Lưu token**: `localStorage` (đơn giản, phù hợp khi chưa có refresh cookie) — chấp nhận rủi ro XSS kèm CSP?
-3. Team backend có thể xử lý nhóm Gap 🔴 + #5/#6/#7/#8 trong sprint đầu không? Nếu không, FE sẽ ẩn các tính năng liên quan (filter, review công khai, preview coupon).
+3. Team backend có thể xử lý nhóm Gap High (#1/#2/#3/#4) trong sprint đầu không? Nếu không, FE sẽ ẩn các tính năng liên quan (filter, review công khai, preview coupon).
 4. Một repo FE với 2 layout (đề xuất) hay tách 2 app (storefront / admin)?
