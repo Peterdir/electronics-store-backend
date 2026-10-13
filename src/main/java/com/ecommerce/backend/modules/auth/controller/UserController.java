@@ -39,13 +39,15 @@ public class UserController {
     }
 
     @PostMapping("/change-password")
-    public ResponseEntity<String> changePassword(
+    public ResponseEntity<MessageResponse> changePassword(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody ChangePasswordRequest request) {
         String email = jwt.getClaimAsString("email");
 
         userService.changePassword(email, request);
 
-        return ResponseEntity.ok("Password changed successfully.");
+        return ResponseEntity.ok(MessageResponse.builder()
+                .message("Password changed successfully.")
+                .build());
     }
 }

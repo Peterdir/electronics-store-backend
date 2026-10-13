@@ -80,7 +80,7 @@ public class BrandServiceImpl implements BrandService {
             }
         }
 
-        Brand updatedBrand = brandRepository.save(brand);
+        Brand updatedBrand = brandRepository.saveAndFlush(brand);
 
         return brandMapper.toResponse(updatedBrand);
     }

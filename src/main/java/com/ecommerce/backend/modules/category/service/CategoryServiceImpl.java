@@ -63,7 +63,7 @@ public class CategoryServiceImpl implements CategoryService {
         category.setName(request.getName());
         category.setStatus(request.getStatus());
 
-        Category updatedCategory = categoryRepository.save(category);
+        Category updatedCategory = categoryRepository.saveAndFlush(category);
 
         return categoryMapper.toResponse(updatedCategory);
     }
