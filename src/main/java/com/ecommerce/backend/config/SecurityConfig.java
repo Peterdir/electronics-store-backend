@@ -20,6 +20,7 @@ import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -56,7 +57,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/inventory/**").permitAll()
                         .requestMatchers("/api/policies/**").permitAll()
 
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
 
                         .requestMatchers("/uploads/**").permitAll()
 
@@ -67,8 +68,18 @@ public class SecurityConfig {
                         .requestMatchers("/api/payments/vnpay/**").permitAll()
 
                         .anyRequest().authenticated())
-                .oauth2ResourceServer(
-                        oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
+                        .oauth2ResourceServer(
+                        oauth2 -> oauth2
+                                .bearerTokenResolver(request -> {
+                                    String path = request.getRequestURI();
+                                    if (path.startsWith("/api/auth/") || path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs") || path.startsWith("/uploads/")) {
+                                        return null;
+                                    }
+                                    DefaultBearerTokenResolver resolver =
+                                            new DefaultBearerTokenResolver();
+                                    return resolver.resolve(request);
+                                })
+                                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 
         return http.build();
     }
