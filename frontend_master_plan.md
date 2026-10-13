@@ -73,23 +73,23 @@ sequenceDiagram
 
 #### Ma trận phân quyền (trích từ `@PreAuthorize`)
 
-| Tài nguyên / hành động | ADMIN | MANAGER | STAFF |
-|---|:-:|:-:|:-:|
-| Dashboard, Reports | ✅ | ✅ | ❌ |
-| Users: list / detail / lock-unlock | ✅ | ✅ *(chỉ Customer)* | ❌ |
-| Users: đổi role | ✅ | ❌ | ❌ |
-| Categories, Brands: CUD | ✅ | ✅ | ❌ |
-| Products: create / update | ✅ | ✅ | ✅ |
-| Products: đổi status | ✅ | ✅ | ❌ |
+| Tài nguyên / hành động                | ADMIN | MANAGER | STAFF |
+|---------------------------------------|:-:|:-:|:-:|
+| Dashboard, Reports                    | ✅ | ✅ | ❌ |
+| Users: list / detail / lock-unlock    | ✅ | ✅ *(chỉ Customer)* | ❌ |
+| Users: đổi role                       | ✅ | ❌ | ❌ |
+| Categories, Brands: CUD               | ✅ | ✅ | ❌ |
+| Products: create / update             | ✅ | ✅ | ✅ |
+| Products: đổi status, delete variant  | ✅ | ✅ | ❌ |
 | Inventory: xem / điều chỉnh / lịch sử | ✅ | ✅ | ✅ |
 | Orders: list / detail / update status | ✅ | ✅ | ✅ |
-| Orders: cancel (có lý do) | ✅ | ✅ | ❌ |
-| Coupons: xem | ✅ | ✅ | ✅ |
-| Coupons: create / update / toggle | ✅ | ✅ | ❌ |
-| Return requests: xem | ✅ | ✅ | ✅ |
-| Return requests: xử lý | ✅ | ✅ | ❌ |
-| Reviews: xem / reply | ✅ | ✅ | ✅ |
-| Reviews: ẩn/hiện | ✅ | ✅ | ❌ |
+| Orders: cancel (có lý do)             | ✅ | ✅ | ❌ |
+| Coupons: xem                          | ✅ | ✅ | ✅ |
+| Coupons: create / update / toggle     | ✅ | ✅ | ❌ |
+| Return requests: xem                  | ✅ | ✅ | ✅ |
+| Return requests: xử lý                | ✅ | ✅ | ❌ |
+| Reviews: xem / reply                  | ✅ | ✅ | ✅ |
+| Reviews: ẩn/hiện                      | ✅ | ✅ | ❌ |
 
 ### 1.3 Quy ước dữ liệu xuyên suốt
 
