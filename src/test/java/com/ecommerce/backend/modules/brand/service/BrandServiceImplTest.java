@@ -180,7 +180,7 @@ class BrandServiceImplTest {
             testRequest.setName("Apple Inc");
             when(brandRepository.findById(1L)).thenReturn(Optional.of(testBrand));
             when(brandRepository.existsByNameAndIdNot("Apple Inc", 1L)).thenReturn(false);
-            when(brandRepository.save(testBrand)).thenReturn(testBrand);
+            when(brandRepository.saveAndFlush(testBrand)).thenReturn(testBrand);
             when(brandMapper.toResponse(testBrand)).thenReturn(testResponse);
 
             BrandResponse response = brandService.updateBrand(1L, testRequest, null);
@@ -188,7 +188,7 @@ class BrandServiceImplTest {
             assertNotNull(response);
             assertEquals("Apple Inc", testBrand.getName());
             verify(fileStorageService, never()).uploadFile(any(), any());
-            verify(brandRepository, times(1)).save(testBrand);
+            verify(brandRepository, times(1)).saveAndFlush(testBrand);
         }
 
         @Test
@@ -198,14 +198,14 @@ class BrandServiceImplTest {
             when(brandRepository.findById(1L)).thenReturn(Optional.of(testBrand));
             when(brandRepository.existsByNameAndIdNot("Apple", 1L)).thenReturn(false);
             when(fileStorageService.uploadFile(mockLogoFile, "brands")).thenReturn("https://cdn/new-logo.png");
-            when(brandRepository.save(testBrand)).thenReturn(testBrand);
+            when(brandRepository.saveAndFlush(testBrand)).thenReturn(testBrand);
             when(brandMapper.toResponse(testBrand)).thenReturn(testResponse);
 
             BrandResponse response = brandService.updateBrand(1L, testRequest, mockLogoFile);
 
             assertNotNull(response);
             verify(fileStorageService, times(1)).deleteFile("https://cdn.example.com/brands/apple.png");
-            verify(brandRepository, times(1)).save(testBrand);
+            verify(brandRepository, times(1)).saveAndFlush(testBrand);
         }
 
         @Test
@@ -216,7 +216,7 @@ class BrandServiceImplTest {
             assertThrows(ResourceNotFoundException.class, () ->
                     brandService.updateBrand(999L, testRequest, null)
             );
-            verify(brandRepository, never()).save(any());
+            verify(brandRepository, never()).saveAndFlush(any());
         }
 
         @Test
@@ -229,7 +229,7 @@ class BrandServiceImplTest {
             assertThrows(DuplicateResourceException.class, () ->
                     brandService.updateBrand(1L, testRequest, null)
             );
-            verify(brandRepository, never()).save(any());
+            verify(brandRepository, never()).saveAndFlush(any());
         }
     }
 

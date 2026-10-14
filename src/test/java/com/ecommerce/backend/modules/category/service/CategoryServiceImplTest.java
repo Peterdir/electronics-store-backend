@@ -167,14 +167,14 @@ class CategoryServiceImplTest {
             testRequest.setName("Gaming Laptops");
             when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
             when(categoryRepository.existsByNameAndIdNot("Gaming Laptops", 1L)).thenReturn(false);
-            when(categoryRepository.save(testCategory)).thenReturn(testCategory);
+            when(categoryRepository.saveAndFlush(testCategory)).thenReturn(testCategory);
             when(categoryMapper.toResponse(testCategory)).thenReturn(testResponse);
 
             CategoryResponse response = categoryService.updateCategory(1L, testRequest);
 
             assertNotNull(response);
             assertEquals("Gaming Laptops", testCategory.getName());
-            verify(categoryRepository, times(1)).save(testCategory);
+            verify(categoryRepository, times(1)).saveAndFlush(testCategory);
         }
 
         @Test
@@ -183,7 +183,7 @@ class CategoryServiceImplTest {
             when(categoryRepository.findById(999L)).thenReturn(Optional.empty());
 
             assertThrows(ResourceNotFoundException.class, () -> categoryService.updateCategory(999L, testRequest));
-            verify(categoryRepository, never()).save(any());
+            verify(categoryRepository, never()).saveAndFlush(any());
         }
 
         @Test
@@ -194,7 +194,7 @@ class CategoryServiceImplTest {
             when(categoryRepository.existsByNameAndIdNot("Existing Category", 1L)).thenReturn(true);
 
             assertThrows(DuplicateResourceException.class, () -> categoryService.updateCategory(1L, testRequest));
-            verify(categoryRepository, never()).save(any());
+            verify(categoryRepository, never()).saveAndFlush(any());
         }
     }
 
