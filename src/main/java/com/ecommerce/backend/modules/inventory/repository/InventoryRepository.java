@@ -1,9 +1,11 @@
 package com.ecommerce.backend.modules.inventory.repository;
 
 import com.ecommerce.backend.modules.inventory.entity.Inventory;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -24,6 +26,10 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
             @Param("maxQuantity") Long maxQuantity);
 
     Optional<Inventory> findByProductVariantId(Long productVariantId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM Inventory i WHERE i.productVariant.id = :productVariantId")
+    Optional<Inventory> findByProductVariantIdForUpdate(@Param("productVariantId") Long productVariantId);
 
     @Query("SELECT COUNT(i) FROM Inventory i WHERE i.quantity <= :threshold")
     Long countLowStockVariants(@Param("threshold") Long threshold);

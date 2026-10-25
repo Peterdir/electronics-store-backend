@@ -11,4 +11,7 @@ public interface TransactionLogRepository extends JpaRepository<TransactionLog, 
     List<TransactionLog> findByOrderIdOrderByCreatedAtDesc(Long orderId);
 
     boolean existsByVnpTxnRefAndSuccessTrue(String vnpTxnRef);
+
+    boolean existsByVnpTxnRefAndVnpTransactionNoAndVnpResponseCodeAndPayDate(
+            String vnpTxnRef, String vnpTransactionNo, String vnpResponseCode, String payDate);
 }

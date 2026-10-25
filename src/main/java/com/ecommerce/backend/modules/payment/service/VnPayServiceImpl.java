@@ -107,60 +107,48 @@ public class VnPayServiceImpl implements VnPayService{
     @Override
     public Map<String, Object> handleReturnUrl(HttpServletRequest request) {
 
-        Map<String, String> vnpParams = extractVnpParams(request);
-
-        String vnpSecureHash = request.getParameter("vnp_SecureHash");
-        vnpParams.remove("vnp_SecureHash");
-        vnpParams.remove("vnp_SecureHashType");
-
-        String calculatedHash = hmacSHA512(
-                vnPayConfig.getHashSecret(), buildHashData(vnpParams));
-
         Map<String, Object> result = new LinkedHashMap<>();
+        VerifyResult verify = verifyCallback(request);
 
-        if (!calculatedHash.equals(vnpSecureHash)) {
-            log.warn("VNPAY Return - Invalid signature for TxnRef: {}",
-                    vnpParams.get("vnp_TxnRef"));
-            result.put("success", false);
-            result.put("message",
-                    "An error occurred while verifying your payment.");
-            return result;
-        }
-
-        String responseCode = vnpParams.get("vnp_ResponseCode");
-        String txnRef = vnpParams.get("vnp_TxnRef");
-        Long orderId = Long.parseLong(txnRef);
-
-        Order order = orderRepository.findById(orderId).orElse(null);
-
-        if (order == null) {
-            result.put("success", false);
-            result.put("message", "Order not found.");
-            return result;
-        }
-
-        saveTransactionLog(order, vnpParams, "00".equals(responseCode));
-
-        if ("00".equals(responseCode)) {
-            if (order.getPaymentStatus() != PaymentStatus.PAID) {
-                order.setPaymentStatus(PaymentStatus.PAID);
-                orderRepository.save(order);
+        switch (verify.status()) {
+            case INVALID_SIGNATURE, INVALID_MERCHANT, INVALID_REQUEST, INVALID_AMOUNT -> {
+                log.warn("VNPAY Return - Verification failed ({}) for TxnRef: {}",
+                        verify.status(), verify.params().get("vnp_TxnRef"));
+                result.put("success", false);
+                result.put("message",
+                        "An error occurred while verifying your payment.");
+                return result;
             }
+            case ORDER_NOT_FOUND -> {
+                result.put("success", false);
+                result.put("message", "Order not found.");
+                return result;
+            }
+            default -> { }
+        }
+
+        Order order = verify.order();
+        Map<String, String> vnpParams = verify.params();
+        String orderId = String.valueOf(order.getId());
+
+        processPayment(order, vnpParams);
+
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
             result.put("success", true);
             result.put("message", "Payment successful!");
-            result.put("orderId", String.valueOf(orderId));
-        } else if ("24".equals(responseCode)) {
+            result.put("orderId", orderId);
+        } else if ("24".equals(vnpParams.get("vnp_ResponseCode"))) {
             // Mã 24, khách hàng hủy thanh toán
             result.put("success", false);
             result.put("message",
                     "Payment cancelled. You can retry payment later.");
-            result.put("orderId", String.valueOf(orderId));
+            result.put("orderId", orderId);
         } else {
             // Giao dịch thất bại
             result.put("success", false);
             result.put("message",
                     "Payment failed. Please try another test card.");
-            result.put("orderId", String.valueOf(orderId));
+            result.put("orderId", orderId);
         }
 
         return result;
@@ -172,63 +160,42 @@ public class VnPayServiceImpl implements VnPayService{
         Map<String, String> result = new LinkedHashMap<>();
 
         try {
-            Map<String, String> vnpParams = extractVnpParams(request);
-            // Kiểm tra checksum
-            String vnpSecureHash = request.getParameter("vnp_SecureHash");
-            vnpParams.remove("vnp_SecureHash");
-            vnpParams.remove("vnp_SecureHashType");
+            VerifyResult verify = verifyCallback(request);
 
-            String calculatedHash = hmacSHA512(vnPayConfig.getHashSecret(), buildHashData(vnpParams));
-
-            if (!calculatedHash.equals(vnpSecureHash)) {
-                log.error("VNPAY IPN - Invalid checksum");
-                result.put("RspCode", "97");
-                result.put("Message", "Invalid Checksum");
-                return result;
+            switch (verify.status()) {
+                case INVALID_SIGNATURE -> {
+                    log.error("VNPAY IPN - Invalid checksum");
+                    result.put("RspCode", "97");
+                    result.put("Message", "Invalid Checksum");
+                    return result;
+                }
+                case INVALID_MERCHANT, INVALID_REQUEST -> {
+                    log.error("VNPAY IPN - Invalid request ({})", verify.status());
+                    result.put("RspCode", "99");
+                    result.put("Message", "Unknown error");
+                    return result;
+                }
+                case ORDER_NOT_FOUND -> {
+                    result.put("RspCode", "01");
+                    result.put("Message", "Order Not Found");
+                    return result;
+                }
+                case INVALID_AMOUNT -> {
+                    result.put("RspCode", "04");
+                    result.put("Message", "Invalid Amount");
+                    return result;
+                }
+                default -> { }
             }
 
-            String vnpTmnCode = vnpParams.get("vnp_TmnCode");
-            if (!vnPayConfig.getTmnCode().equals(vnpTmnCode)) {
-                log.error("VNPAY IPN - TmnCode mismatch: {}", vnpTmnCode);
-                result.put("RspCode", "99");
-                result.put("Message", "Unknown error");
-                return result;
-            }
-
-            String txnRef = vnpParams.get("vnp_TxnRef");
-            Long orderId = Long.parseLong(txnRef);
-            Order order = orderRepository.findById(orderId).orElse(null);
-            if (order == null) {
-                result.put("RspCode", "01");
-                result.put("Message", "Order Not Found");
-                return result;
-            }
-
-            long vnpAmount = Long.parseLong(vnpParams.get("vnp_Amount")) / 100;
-            if (order.getTotalPrice().compareTo(BigDecimal.valueOf(vnpAmount)) != 0) {
-                // VNPAY retry
-                result.put("RspCode", "04");
-                result.put("Message", "Invalid Amount");
-                return result;
-            }
-
-            if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            if (verify.order().getPaymentStatus() == PaymentStatus.PAID) {
                 // VNPAY kết thúc luồng (đã xử lý rồi)
                 result.put("RspCode", "02");
                 result.put("Message", "Order already confirmed");
                 return result;
             }
 
-
-            String responseCode = vnpParams.get("vnp_ResponseCode");
-            String transactionStatus = vnpParams.get("vnp_TransactionStatus");
-            boolean success = "00".equals(responseCode) && "00".equals(transactionStatus);
-
-            saveTransactionLog(order, vnpParams, success);
-            if (success) {
-                order.setPaymentStatus(PaymentStatus.PAID);
-                orderRepository.save(order);
-            }
+            processPayment(verify.order(), verify.params());
 
             // VNPAY kết thúc luồng
             result.put("RspCode", "00");
@@ -240,6 +207,84 @@ public class VnPayServiceImpl implements VnPayService{
             result.put("Message", "Unknown error");
         }
         return result;
+    }
+
+    private enum VerifyStatus {
+        VALID, INVALID_SIGNATURE, INVALID_MERCHANT, INVALID_REQUEST, ORDER_NOT_FOUND, INVALID_AMOUNT
+    }
+
+    private record VerifyResult(VerifyStatus status, Order order, Map<String, String> params) {}
+
+    /**
+     * Logic xác nhận dùng chung cho Return URL và IPN:
+     * chữ ký, mã merchant, mã đơn, số tiền. Đơn hàng được khóa dòng
+     * để Return và IPN không xử lý chồng lên nhau.
+     */
+    private VerifyResult verifyCallback(HttpServletRequest request) {
+        Map<String, String> vnpParams = extractVnpParams(request);
+
+        String vnpSecureHash = request.getParameter("vnp_SecureHash");
+        vnpParams.remove("vnp_SecureHash");
+        vnpParams.remove("vnp_SecureHashType");
+
+        String calculatedHash = hmacSHA512(vnPayConfig.getHashSecret(), buildHashData(vnpParams));
+        if (vnpSecureHash == null || !calculatedHash.equalsIgnoreCase(vnpSecureHash)) {
+            return new VerifyResult(VerifyStatus.INVALID_SIGNATURE, null, vnpParams);
+        }
+
+        if (!vnPayConfig.getTmnCode().equals(vnpParams.get("vnp_TmnCode"))) {
+            return new VerifyResult(VerifyStatus.INVALID_MERCHANT, null, vnpParams);
+        }
+
+        long orderId;
+        long vnpAmount;
+        try {
+            orderId = Long.parseLong(vnpParams.get("vnp_TxnRef"));
+            vnpAmount = Long.parseLong(vnpParams.get("vnp_Amount"));
+        } catch (NumberFormatException e) {
+            return new VerifyResult(VerifyStatus.INVALID_REQUEST, null, vnpParams);
+        }
+
+        Order order = orderRepository.findByIdForUpdate(orderId).orElse(null);
+        if (order == null) {
+            return new VerifyResult(VerifyStatus.ORDER_NOT_FOUND, null, vnpParams);
+        }
+
+        // vnp_Amount = số tiền * 100
+        BigDecimal expectedAmount = order.getTotalPrice().multiply(BigDecimal.valueOf(100));
+        if (expectedAmount.compareTo(BigDecimal.valueOf(vnpAmount)) != 0) {
+            return new VerifyResult(VerifyStatus.INVALID_AMOUNT, order, vnpParams);
+        }
+
+        return new VerifyResult(VerifyStatus.VALID, order, vnpParams);
+    }
+
+    /**
+     * Xử lý idempotent: đơn đã PAID thì bỏ qua, callback trùng thì không ghi log lại.
+     */
+    private void processPayment(Order order, Map<String, String> vnpParams) {
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            return;
+        }
+
+        boolean success = "00".equals(vnpParams.get("vnp_ResponseCode"))
+                && "00".equals(vnpParams.get("vnp_TransactionStatus"));
+
+        boolean duplicated = transactionLogRepository
+                .existsByVnpTxnRefAndVnpTransactionNoAndVnpResponseCodeAndPayDate(
+                        vnpParams.get("vnp_TxnRef"),
+                        vnpParams.get("vnp_TransactionNo"),
+                        vnpParams.get("vnp_ResponseCode"),
+                        vnpParams.get("vnp_PayDate"));
+
+        if (!duplicated) {
+            saveTransactionLog(order, vnpParams, success);
+        }
+
+        if (success) {
+            order.setPaymentStatus(PaymentStatus.PAID);
+            orderRepository.save(order);
+        }
     }
 
     private String getIpAddress(HttpServletRequest request) {

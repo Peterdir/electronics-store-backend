@@ -40,7 +40,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -99,18 +102,11 @@ public class CheckoutServiceImpl implements CheckoutService {
         Order order = buildOrder(user, shippingInfo, shippingFee,
                 couponResult, itemsResult, totalPrice, request.getPaymentMethod());
 
-        if (isBuyNow) {
-            deductInventoryFromOrderItems(order, user.getFullName());
-        } else {
-            deductInventoryFromCart(cart, order, user.getFullName());
-        }
-
-        if (couponResult.coupon() != null) {
-            couponResult.coupon().setUsedCount(couponResult.coupon().getUsedCount() + 1);
-            couponRepository.save(couponResult.coupon());
-        }
-
         Order savedOrder = orderRepository.save(order);
+
+        deductInventory(savedOrder, user.getFullName());
+
+        increaseCouponUsage(couponResult.coupon());
 
         if (!isBuyNow) {
             cart.getItems().clear();
@@ -120,6 +116,8 @@ public class CheckoutServiceImpl implements CheckoutService {
         return buildResponse(savedOrder, request.getPaymentMethod(), false);
     }
 
+    @Override
+    @Transactional
     public CheckoutResponse placeGuestOrder(CheckoutRequest request) {
 
         if (request.getDirectItems() == null || request.getDirectItems().isEmpty()) {
@@ -149,15 +147,12 @@ public class CheckoutServiceImpl implements CheckoutService {
         Order order = buildOrder(null, shippingInfo, shippingFee,
                 couponResult, itemsResult, totalPrice, request.getPaymentMethod());
 
-        deductInventoryFromOrderItems(order, "Guest: " + shippingInfo.recipientName);
-
-        if (couponResult.coupon() != null) {
-            couponResult.coupon().setUsedCount(couponResult.coupon().getUsedCount() + 1);
-            couponRepository.save(couponResult.coupon());
-        }
-
         Order savedOrder = orderRepository.save(order);
-        
+
+        deductInventory(savedOrder, "Guest: " + shippingInfo.recipientName());
+
+        increaseCouponUsage(couponResult.coupon());
+
         return buildResponse(savedOrder, request.getPaymentMethod(), true);
     }
 
@@ -234,8 +229,17 @@ public class CheckoutServiceImpl implements CheckoutService {
         BigDecimal subtotal = BigDecimal.ZERO;
         List<OrderItem> orderItems = new ArrayList<>();
 
+        // Gộp các dòng trùng variant để kiểm tra tồn kho theo tổng số lượng
+        Map<Long, Integer> mergedItems = new LinkedHashMap<>();
         for (CheckoutItem item : items) {
-            ProductVariant productVariant = productVariantRepository.findById(item.getProductVariantId())
+            mergedItems.merge(item.getProductVariantId(), item.getQuantity(), Integer::sum);
+        }
+
+        for (Map.Entry<Long, Integer> entry : mergedItems.entrySet()) {
+            Long variantId = entry.getKey();
+            int quantity = entry.getValue();
+
+            ProductVariant productVariant = productVariantRepository.findById(variantId)
                     .orElseThrow(() -> new ResourceNotFoundException("Some items are out of stock. Please update your cart."));
 
             if (productVariant.getProduct() == null ||
@@ -245,15 +249,15 @@ public class CheckoutServiceImpl implements CheckoutService {
                 throw new BadRequestException("Some items are out of stock. Please update your cart.");
             }
 
-            Inventory inventory = inventoryRepository.findByProductVariantId(item.getProductVariantId())
+            Inventory inventory = inventoryRepository.findByProductVariantId(variantId)
                     .orElseThrow(() -> new BadRequestException("Some items are out of stock. Please update your cart."));
             long currentStock = inventory.getQuantity() != null ? inventory.getQuantity() : 0L;
-            if (item.getQuantity() > currentStock) {
+            if (quantity > currentStock) {
                 throw new BadRequestException("Some items are out of stock. Please update your cart.");
             }
 
             BigDecimal unitPrice = productVariant.getPrice() != null ? productVariant.getPrice() : BigDecimal.ZERO;
-            BigDecimal itemSubtotal = unitPrice.multiply(BigDecimal.valueOf(item.getQuantity()));
+            BigDecimal itemSubtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
 
             subtotal = subtotal.add(itemSubtotal);
 
@@ -262,8 +266,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                             .productName(productVariant.getProduct().getName())
                             .variantSku(productVariant.getSku())
                             .thumbnailUrl(productVariant.getImageUrl())
-                            .unitPrice(productVariant.getPrice())
-                            .quantity(item.getQuantity())
+                            .unitPrice(unitPrice)
+                            .quantity(quantity)
                             .subtotal(itemSubtotal)
                     .build());
         }
@@ -396,23 +400,27 @@ public class CheckoutServiceImpl implements CheckoutService {
         return order;
     }
 
-    private void deductInventoryFromOrderItems(Order order, String customerName) {
+    private void deductInventory(Order order, String customerName) {
+        // Gộp theo variant và khóa theo thứ tự id tăng dần để tránh deadlock
+        Map<Long, Integer> quantities = new TreeMap<>();
         for (OrderItem orderItem : order.getItems()) {
-            deductSingleItem(orderItem.getProductVariant().getId(), order.getId(), orderItem.getQuantity(), customerName);
+            quantities.merge(orderItem.getProductVariant().getId(), orderItem.getQuantity(), Integer::sum);
         }
-    }
 
-    private void deductInventoryFromCart(Cart cart, Order order, String customerName) {
-        for (CartItem cartItem : cart.getItems()) {
-            deductSingleItem(cartItem.getProductVariant().getId(), order.getId(), cartItem.getQuantity(), customerName);
-        }
+        quantities.forEach((variantId, quantity) ->
+                deductSingleItem(variantId, order.getId(), quantity, customerName));
     }
 
     private void deductSingleItem(Long variantId, Long orderId, int quantity, String customerName) {
-        Inventory inventory = inventoryRepository.findByProductVariantId(variantId)
-                .orElseThrow(() -> new ResourceNotFoundException("Some items are out of stock. Please update your cart."));
+        // Khóa dòng tồn kho (SELECT ... FOR UPDATE) để chống vượt tồn khi đặt hàng đồng thời
+        Inventory inventory = inventoryRepository.findByProductVariantIdForUpdate(variantId)
+                .orElseThrow(() -> new BadRequestException("Some items are out of stock. Please update your cart."));
 
-        long currentStock = inventory.getQuantity();
+        long currentStock = inventory.getQuantity() != null ? inventory.getQuantity() : 0L;
+        if (quantity > currentStock) {
+            throw new BadRequestException("Some items are out of stock. Please update your cart.");
+        }
+
         long newQuantity = currentStock - quantity;
 
         inventory.setUpdatedAt(Instant.now());
@@ -428,6 +436,16 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .reason("Deducted for order #: " + orderId)
                 .createdAt(Instant.now())
                 .build());
+    }
+
+    private void increaseCouponUsage(Coupon coupon) {
+        if (coupon == null) return;
+
+        // Cập nhật có điều kiện để không vượt usageLimit khi nhiều người dùng cùng lúc
+        int updated = couponRepository.incrementUsedCountIfAvailable(coupon.getId(), Instant.now());
+        if (updated == 0) {
+            throw new BadRequestException("Invalid or expired voucher code.");
+        }
     }
 
     private CheckoutResponse buildResponse(Order order, PaymentMethod paymentMethod, boolean isGuest) {
