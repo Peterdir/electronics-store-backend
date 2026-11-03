@@ -99,7 +99,11 @@ public class CheckoutServiceImpl implements CheckoutService {
 
         BigDecimal totalPrice = calculateTotalPrice(itemsResult.subtotal(), shippingFee, couponResult.discountAmount());
 
-        Order order = buildOrder(user, shippingInfo, shippingFee,
+        String contactEmail = StringUtils.hasText(request.getContactEmail())
+                ? request.getContactEmail().trim()
+                : user.getEmail();
+
+        Order order = buildOrder(user, shippingInfo, contactEmail, shippingFee,
                 couponResult, itemsResult, totalPrice, request.getPaymentMethod());
 
         Order savedOrder = orderRepository.save(order);
@@ -144,7 +148,11 @@ public class CheckoutServiceImpl implements CheckoutService {
 
         BigDecimal totalPrice = calculateTotalPrice(itemsResult.subtotal(), shippingFee, couponResult.discountAmount());
 
-        Order order = buildOrder(null, shippingInfo, shippingFee,
+        String contactEmail = StringUtils.hasText(request.getContactEmail())
+                ? request.getContactEmail().trim()
+                : null;
+
+        Order order = buildOrder(null, shippingInfo, contactEmail, shippingFee,
                 couponResult, itemsResult, totalPrice, request.getPaymentMethod());
 
         Order savedOrder = orderRepository.save(order);
@@ -370,6 +378,7 @@ public class CheckoutServiceImpl implements CheckoutService {
     private Order buildOrder(
             User user,
             ShippingInfo shippingInfo,
+            String contactEmail,
             BigDecimal shippingFee,
             CouponResult couponResult,
             OrderItemsResult itemsResult,
@@ -381,6 +390,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                 .recipientName(shippingInfo.recipientName())
                 .recipientPhone(shippingInfo.recipientPhone())
                 .shippingAddress(shippingInfo.shippingAddress())
+                .contactEmail(contactEmail)
                 .subtotal(itemsResult.subtotal())
                 .shippingFee(shippingFee)
                 .couponCode(couponResult.code())
@@ -401,7 +411,6 @@ public class CheckoutServiceImpl implements CheckoutService {
     }
 
     private void deductInventory(Order order, String customerName) {
-        // Gộp theo variant và khóa theo thứ tự id tăng dần để tránh deadlock
         Map<Long, Integer> quantities = new TreeMap<>();
         for (OrderItem orderItem : order.getItems()) {
             quantities.merge(orderItem.getProductVariant().getId(), orderItem.getQuantity(), Integer::sum);
@@ -412,7 +421,6 @@ public class CheckoutServiceImpl implements CheckoutService {
     }
 
     private void deductSingleItem(Long variantId, Long orderId, int quantity, String customerName) {
-        // Khóa dòng tồn kho (SELECT ... FOR UPDATE) để chống vượt tồn khi đặt hàng đồng thời
         Inventory inventory = inventoryRepository.findByProductVariantIdForUpdate(variantId)
                 .orElseThrow(() -> new BadRequestException("Some items are out of stock. Please update your cart."));
 
@@ -441,7 +449,6 @@ public class CheckoutServiceImpl implements CheckoutService {
     private void increaseCouponUsage(Coupon coupon) {
         if (coupon == null) return;
 
-        // Cập nhật có điều kiện để không vượt usageLimit khi nhiều người dùng cùng lúc
         int updated = couponRepository.incrementUsedCountIfAvailable(coupon.getId(), Instant.now());
         if (updated == 0) {
             throw new BadRequestException("Invalid or expired voucher code.");

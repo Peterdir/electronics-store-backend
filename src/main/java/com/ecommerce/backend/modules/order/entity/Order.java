@@ -60,6 +60,9 @@ public class Order {
     private String cancelReason;
     private Instant cancelledAt;
 
+    @Column(name = "contact_email", length = 254)
+    private String contactEmail;
+
     private Instant createdAt;
     private Instant updatedAt;
 
