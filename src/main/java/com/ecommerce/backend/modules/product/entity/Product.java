@@ -37,6 +37,7 @@ public class Product {
 
     private String description;
 
+    @Enumerated(EnumType.STRING)
     private ProductStatus status;
 
     private Double averageRating;

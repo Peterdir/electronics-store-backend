@@ -28,6 +28,7 @@ public class Brand {
 
     private String name;
 
+    @Enumerated(EnumType.STRING)
     private BrandStatus status;
 
     private String logo;

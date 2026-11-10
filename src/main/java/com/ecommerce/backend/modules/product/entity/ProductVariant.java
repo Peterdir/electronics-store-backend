@@ -41,6 +41,7 @@ public class ProductVariant {
 
     private String imageUrl;
 
+    @Enumerated(EnumType.STRING)
     private ProductStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -16,10 +16,10 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
 
     @Modifying
     @Query("""
-                UPDATE Coupon c
-                SET c.usedCount = COALESCE(c.usedCount, 0) + 1, c.updatedAt = :now
-                WHERE c.id = :id
-                    AND (c.usageLimit IS NULL OR COALESCE(c.usedCount, 0) < c.usageLimit)
+        UPDATE Coupon c
+        SET c.usedCount = COALESCE(c.usedCount, 0) + 1, c.updatedAt = :now
+        WHERE c.id = :id
+            AND (c.usageLimit IS NULL OR COALESCE(c.usedCount, 0) < c.usageLimit)
             """)
     int incrementUsedCountIfAvailable(@Param("id") Long id, @Param("now") Instant now);
 }
