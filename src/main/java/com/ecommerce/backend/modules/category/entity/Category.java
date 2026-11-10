@@ -25,7 +25,10 @@ public class Category {
 
     private String name;
 
+    @Enumerated(EnumType.STRING)
     private CategoryStatus status;
+
+    private String imageUrl;
 
     private Instant createdAt;
 

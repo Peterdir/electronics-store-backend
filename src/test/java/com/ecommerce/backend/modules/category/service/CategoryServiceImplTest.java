@@ -3,6 +3,7 @@ package com.ecommerce.backend.modules.category.service;
 import com.ecommerce.backend.common.exception.BadRequestException;
 import com.ecommerce.backend.common.exception.DuplicateResourceException;
 import com.ecommerce.backend.common.exception.ResourceNotFoundException;
+import com.ecommerce.backend.common.service.FileStorageService;
 import com.ecommerce.backend.modules.category.dto.request.CategoryRequest;
 import com.ecommerce.backend.modules.category.dto.response.CategoryResponse;
 import com.ecommerce.backend.modules.category.entity.Category;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Collections;
 import java.util.List;
@@ -41,12 +43,16 @@ class CategoryServiceImplTest {
     @Mock
     private ProductRepository productRepository;
 
+    @Mock
+    private FileStorageService fileStorageService;
+
     @InjectMocks
     private CategoryServiceImpl categoryService;
 
     private Category testCategory;
     private CategoryRequest testRequest;
     private CategoryResponse testResponse;
+    private MultipartFile mockImageFile;
 
     @BeforeEach
     void setUp() {
@@ -54,6 +60,7 @@ class CategoryServiceImplTest {
         testCategory.setId(1L);
         testCategory.setName("Laptops");
         testCategory.setStatus(CategoryStatus.ACTIVE);
+        testCategory.setImageUrl("https://cdn.example.com/categories/laptops.png");
 
         testRequest = new CategoryRequest();
         testRequest.setName("Laptops");
@@ -63,7 +70,10 @@ class CategoryServiceImplTest {
                 .id(1L)
                 .name("Laptops")
                 .status(CategoryStatus.ACTIVE)
+                .imageUrl("https://cdn.example.com/categories/laptops.png")
                 .build();
+
+        mockImageFile = mock(MultipartFile.class);
     }
 
     // =========================================================================
@@ -128,17 +138,36 @@ class CategoryServiceImplTest {
     class CreateCategoryTests {
 
         @Test
-        @DisplayName("TC-CAT-04 [Positive]: Should create category successfully")
+        @DisplayName("TC-CAT-04 [Positive]: Should upload image and create category successfully")
         void createCategory_Success() {
+            when(mockImageFile.isEmpty()).thenReturn(false);
+            when(categoryRepository.existsByName("Laptops")).thenReturn(false);
+            when(categoryMapper.toEntity(testRequest)).thenReturn(testCategory);
+            when(fileStorageService.uploadFile(mockImageFile, "categories")).thenReturn("https://cdn.example.com/categories/laptops.png");
+            when(categoryRepository.save(testCategory)).thenReturn(testCategory);
+            when(categoryMapper.toResponse(testCategory)).thenReturn(testResponse);
+
+            CategoryResponse response = categoryService.createCategory(testRequest, mockImageFile);
+
+            assertNotNull(response);
+            assertEquals("Laptops", response.getName());
+            assertEquals("https://cdn.example.com/categories/laptops.png", response.getImageUrl());
+            verify(fileStorageService, times(1)).uploadFile(mockImageFile, "categories");
+            verify(categoryRepository, times(1)).save(testCategory);
+        }
+
+        @Test
+        @DisplayName("TC-CAT-04B [Positive]: Should create category without image successfully")
+        void createCategory_WithoutImage_Success() {
             when(categoryRepository.existsByName("Laptops")).thenReturn(false);
             when(categoryMapper.toEntity(testRequest)).thenReturn(testCategory);
             when(categoryRepository.save(testCategory)).thenReturn(testCategory);
             when(categoryMapper.toResponse(testCategory)).thenReturn(testResponse);
 
-            CategoryResponse response = categoryService.createCategory(testRequest);
+            CategoryResponse response = categoryService.createCategory(testRequest, null);
 
             assertNotNull(response);
-            assertEquals("Laptops", response.getName());
+            verify(fileStorageService, never()).uploadFile(any(), any());
             verify(categoryRepository, times(1)).save(testCategory);
         }
 
@@ -148,7 +177,7 @@ class CategoryServiceImplTest {
             when(categoryRepository.existsByName("Laptops")).thenReturn(true);
 
             DuplicateResourceException ex = assertThrows(DuplicateResourceException.class,
-                    () -> categoryService.createCategory(testRequest));
+                    () -> categoryService.createCategory(testRequest, mockImageFile));
             assertThat(ex.getMessage()).contains("already exists");
             verify(categoryRepository, never()).save(any());
         }
@@ -162,18 +191,36 @@ class CategoryServiceImplTest {
     class UpdateCategoryTests {
 
         @Test
-        @DisplayName("TC-CAT-06 [Positive]: Should update category successfully")
-        void updateCategory_Success() {
+        @DisplayName("TC-CAT-06 [Positive]: Should update category without new image")
+        void updateCategory_WithoutNewImage_Success() {
             testRequest.setName("Gaming Laptops");
             when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
             when(categoryRepository.existsByNameAndIdNot("Gaming Laptops", 1L)).thenReturn(false);
             when(categoryRepository.saveAndFlush(testCategory)).thenReturn(testCategory);
             when(categoryMapper.toResponse(testCategory)).thenReturn(testResponse);
 
-            CategoryResponse response = categoryService.updateCategory(1L, testRequest);
+            CategoryResponse response = categoryService.updateCategory(1L, testRequest, null);
 
             assertNotNull(response);
             assertEquals("Gaming Laptops", testCategory.getName());
+            verify(fileStorageService, never()).uploadFile(any(), any());
+            verify(categoryRepository, times(1)).saveAndFlush(testCategory);
+        }
+
+        @Test
+        @DisplayName("TC-CAT-06B [Positive]: Should update category with new image and delete old image")
+        void updateCategory_WithNewImage_Success() {
+            when(mockImageFile.isEmpty()).thenReturn(false);
+            when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
+            when(categoryRepository.existsByNameAndIdNot("Laptops", 1L)).thenReturn(false);
+            when(fileStorageService.uploadFile(mockImageFile, "categories")).thenReturn("https://cdn.example.com/categories/new-laptops.png");
+            when(categoryRepository.saveAndFlush(testCategory)).thenReturn(testCategory);
+            when(categoryMapper.toResponse(testCategory)).thenReturn(testResponse);
+
+            CategoryResponse response = categoryService.updateCategory(1L, testRequest, mockImageFile);
+
+            assertNotNull(response);
+            verify(fileStorageService, times(1)).deleteFile("https://cdn.example.com/categories/laptops.png");
             verify(categoryRepository, times(1)).saveAndFlush(testCategory);
         }
 
@@ -182,7 +229,7 @@ class CategoryServiceImplTest {
         void updateCategory_NotFound_ThrowsException() {
             when(categoryRepository.findById(999L)).thenReturn(Optional.empty());
 
-            assertThrows(ResourceNotFoundException.class, () -> categoryService.updateCategory(999L, testRequest));
+            assertThrows(ResourceNotFoundException.class, () -> categoryService.updateCategory(999L, testRequest, null));
             verify(categoryRepository, never()).saveAndFlush(any());
         }
 
@@ -193,7 +240,7 @@ class CategoryServiceImplTest {
             when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
             when(categoryRepository.existsByNameAndIdNot("Existing Category", 1L)).thenReturn(true);
 
-            assertThrows(DuplicateResourceException.class, () -> categoryService.updateCategory(1L, testRequest));
+            assertThrows(DuplicateResourceException.class, () -> categoryService.updateCategory(1L, testRequest, null));
             verify(categoryRepository, never()).saveAndFlush(any());
         }
     }
@@ -206,13 +253,14 @@ class CategoryServiceImplTest {
     class DeleteCategoryTests {
 
         @Test
-        @DisplayName("TC-CAT-09 [Positive]: Delete empty category successfully")
+        @DisplayName("TC-CAT-09 [Positive]: Delete empty category successfully and cleanup image file")
         void deleteCategory_Success() {
             when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
             when(productRepository.existsByCategoryId(1L)).thenReturn(false);
 
             categoryService.deleteCategory(1L);
 
+            verify(fileStorageService, times(1)).deleteFile("https://cdn.example.com/categories/laptops.png");
             verify(categoryRepository, times(1)).delete(testCategory);
         }
 

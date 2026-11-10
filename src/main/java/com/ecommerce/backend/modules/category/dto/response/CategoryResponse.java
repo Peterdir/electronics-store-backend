@@ -22,6 +22,8 @@ public class CategoryResponse {
 
     private Long totalProducts;
 
+    private String imageUrl;
+
     private Instant createdAt;
 
     private Instant updatedAt;

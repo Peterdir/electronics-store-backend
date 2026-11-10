@@ -31,6 +31,7 @@ public class CategoryMapper {
                 .id(category.getId())
                 .name(category.getName())
                 .status(category.getStatus())
+                .imageUrl(category.getImageUrl())
                 .totalProducts(productRepository.countByCategoryId(category.getId()))
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
