@@ -61,7 +61,7 @@ public class VnPayServiceImpl implements VnPayService{
         vnpParams.put("vnp_Amount", String.valueOf(amount));
         vnpParams.put("vnp_CurrCode", "VND");
         vnpParams.put("vnp_TxnRef", vnpTxnRef);
-        vnpParams.put("vnp_OrderInfo", "Thanh toan don hang #" + orderId);
+        vnpParams.put("vnp_OrderInfo", "Thanh toan don hang " + orderId);
         vnpParams.put("vnp_OrderType", "other");
         vnpParams.put("vnp_Locale", "vn");
         vnpParams.put("vnp_ReturnUrl", vnPayConfig.getReturnUrl());
@@ -99,7 +99,17 @@ public class VnPayServiceImpl implements VnPayService{
         String vnpSecureHash = hmacSHA512(vnPayConfig.getHashSecret(), hashData.toString());
 
         query.append("&vnp_SecureHash=").append(vnpSecureHash);
-
+        log.info(
+                "VNPAY create: tmnCode=[{}], payUrl=[{}], returnUrl=[{}], "
+                        + "ip=[{}], createDate={}, expireDate={}, hashLength={}",
+                vnPayConfig.getTmnCode(),
+                vnPayConfig.getPayUrl(),
+                vnPayConfig.getReturnUrl(),
+                vnpIpAddr,
+                vnpCreateDate,
+                vnpExpireDate,
+                vnpSecureHash.length()
+        );
         return vnPayConfig.getPayUrl() + "?" + query;
     }
 
