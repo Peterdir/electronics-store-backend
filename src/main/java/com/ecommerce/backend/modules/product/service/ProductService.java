@@ -18,6 +18,7 @@ public interface ProductService {
     void updateProduct(Long id, AdminProductRequest request);
 
     void changeProductStatus(Long id, ProductStatus status);
+    
     ProductDetailsResponse getProductDetails(Long id);
 
     VariantResponse getVariantDetails(Long productId, Map<String, Object> attributes);

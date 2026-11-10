@@ -6,6 +6,7 @@ import com.ecommerce.backend.modules.product.enums.ProductStatus;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -24,6 +25,8 @@ public class VariantResponse {
     private Long stock;
 
     private String imageUrl;
+
+    private List<ProductImageDetailResponse> images;
 
     private Map<String, Object> attributes;
 

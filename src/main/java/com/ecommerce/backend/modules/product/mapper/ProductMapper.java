@@ -6,6 +6,7 @@ import com.ecommerce.backend.modules.product.entity.ProductImage;
 import com.ecommerce.backend.modules.product.entity.ProductVariant;
 import org.springframework.stereotype.Component;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Component
@@ -25,7 +26,9 @@ public class ProductMapper {
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
                 .brandName(product.getBrand() != null ? product.getBrand().getName() : null)
                 .images(product.getProductImages() != null ? 
-                        product.getProductImages().stream().map(ProductImage::getImageUrl).toList() : null)
+                        product.getProductImages().stream()
+                                .filter(img -> img.getProductVariant() == null)
+                                .map(ProductImage::getImageUrl).toList() : null)
                 .variants(product.getVariants() != null ? 
                         product.getVariants().stream().map(this::toVariantResponse).toList() : null)
                 .stock(totalStock)
@@ -41,12 +44,20 @@ public class ProductMapper {
         Long stock = (variant.getInventory() != null && variant.getInventory().getQuantity() != null) 
                 ? variant.getInventory().getQuantity() : 0L;
 
+        List<ProductImageDetailResponse> imageResponses = variant.getImages() != null
+                ? variant.getImages().stream()
+                .sorted(Comparator.comparingInt(ProductImage::getDisplayOrder))
+                .map(this::toProductImageDetailResponse)
+                .toList()
+                : List.of();
+
         return VariantResponse.builder()
                 .id(variant.getId())
                 .sku(variant.getSku())
                 .price(variant.getPrice())
                 .stock(stock)
                 .imageUrl(variant.getImageUrl())
+                .images(imageResponses)
                 .attributes(variant.getAttributes())
                 .status(variant.getStatus())
                 .build();
@@ -147,6 +158,7 @@ public class ProductMapper {
 
         List<ProductImageDetailResponse> imageResponses = product.getProductImages() != null
                 ? product.getProductImages().stream()
+                .filter(img -> img.getProductVariant() == null)
                 .map(this::toProductImageDetailResponse)
                 .toList()
                 : List.of();
@@ -190,15 +202,21 @@ public class ProductMapper {
     }
 
     private String getPrimaryImageUrl(Product product) {
-        String primaryImageUrl = null;
-        if (product.getProductImages() != null && !product.getProductImages().isEmpty()) {
-            primaryImageUrl = product.getProductImages().stream()
-                    .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
-                    .map(ProductImage::getImageUrl)
-                    .findFirst()
-                    .orElse(product.getProductImages().get(0).getImageUrl());
+        if (product.getProductImages() == null) {
+            return null;
         }
 
-        return primaryImageUrl;
+        List<ProductImage> productLevelImages = product.getProductImages().stream()
+                .filter(img -> img.getProductVariant() == null)
+                .toList();
+        if (productLevelImages.isEmpty()) {
+            return null;
+        }
+
+        return productLevelImages.stream()
+                .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
+                .map(ProductImage::getImageUrl)
+                .findFirst()
+                .orElse(productLevelImages.get(0).getImageUrl());
     }
 }

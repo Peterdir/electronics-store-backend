@@ -27,6 +27,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     @Query("SELECT p FROM Product p WHERE p.id = :id AND p.status = ProductStatus.ACTIVE")
     Optional<Product> findActiveProductById(@Param("id") Long productId);
 
+    @EntityGraph(attributePaths = {"category", "brand", "variants", "variants.inventory"})
     Optional<Product> findByIdAndStatus(Long productId, ProductStatus status);
 
     List<Product> findTop5ByNameContaining(String keyword);
