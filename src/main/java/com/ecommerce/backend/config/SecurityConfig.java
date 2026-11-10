@@ -71,10 +71,17 @@ public class SecurityConfig {
                         .oauth2ResourceServer(
                         oauth2 -> oauth2
                                 .bearerTokenResolver(request -> {
-                                    String path = request.getRequestURI();
-                                    if (path.startsWith("/api/auth/") || path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs") || path.startsWith("/uploads/")) {
-                                        return null;
-                                    }
+                                     String path = request.getRequestURI();
+                                     if (path.startsWith("/api/auth/") || path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs") || path.startsWith("/uploads/")) {
+                                         return null;
+                                     }
+                                     if ("GET".equalsIgnoreCase(request.getMethod()) && (path.startsWith("/api/products")
+                                             || path.startsWith("/api/categories")
+                                             || path.startsWith("/api/brands")
+                                             || path.startsWith("/api/inventory")
+                                             || path.startsWith("/api/policies"))) {
+                                         return null;
+                                     }
                                     DefaultBearerTokenResolver resolver =
                                             new DefaultBearerTokenResolver();
                                     return resolver.resolve(request);
