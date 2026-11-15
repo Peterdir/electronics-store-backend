@@ -145,15 +145,22 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional
-    public ReviewResponse updateReview(Long userId, Long reviewId, UpdateReviewRequest request) {
+    public ReviewResponse updateReview(Long userId, Long reviewId, UpdateReviewRequest request,
+                                       MultipartFile image) {
         Review review = getOwnedActiveReviewForUpdate(userId, reviewId);
         validateReviewContent(request.getReviewText());
 
+        boolean removeImage = Boolean.TRUE.equals(request.getRemoveImage());
+        if (image != null && removeImage) {
+            throw new BadRequestException("Choose either a new image or remove the existing image.");
+        }
+
+        String nextImageUrl = image == null ? null : uploadReviewImage(image);
         review.setRating(request.getRating());
         review.setReviewText(request.getReviewText());
-        if (Boolean.TRUE.equals(request.getRemoveImage())) {
+        if (image != null || removeImage) {
             String previousImageUrl = review.getImageUrl();
-            review.setImageUrl(null);
+            review.setImageUrl(nextImageUrl);
             deleteReviewImageAfterCommit(previousImageUrl, reviewId);
         }
 

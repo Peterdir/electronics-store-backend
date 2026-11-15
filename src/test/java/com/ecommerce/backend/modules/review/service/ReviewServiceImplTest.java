@@ -116,17 +116,18 @@ class ReviewServiceImplTest {
     }
 
     @Test
-    void updatesContentAndKeepsExistingImageWhenRemoveImageIsOmitted() throws Exception {
+    void updatesContentAndKeepsExistingImageWhenRemoveImageIsOmitted() {
         var created = existingReviewWithImage();
+        var originalImageUrl = created.getImageUrl();
         var update = new UpdateReviewRequest();
         update.setRating(4.0);
         update.setReviewText("Updated review");
 
-        var result = service.updateReview(1L, created.getId(), update);
+        var result = service.updateReview(1L, created.getId(), update, null);
 
         assertEquals(4.0, result.getRating());
         assertEquals("Updated review", result.getReviewText());
-        assertEquals(created.getImageUrl(), result.getImageUrl());
+        assertEquals(originalImageUrl, result.getImageUrl());
         assertTrue(Files.isRegularFile(storedImage(result.getImageUrl())));
     }
 
@@ -138,13 +139,81 @@ class ReviewServiceImplTest {
         update.setRating(4.0);
         update.setRemoveImage(true);
 
-        var result = service.updateReview(1L, created.getId(), update);
+        var result = service.updateReview(1L, created.getId(), update, null);
 
         assertNull(result.getImageUrl());
         assertTrue(Files.isRegularFile(stored));
         TransactionSynchronizationManager.getSynchronizations()
                 .forEach(TransactionSynchronization::afterCommit);
         assertFalse(Files.exists(stored));
+    }
+
+    @Test
+    void replacesImageAndDeletesOldFileAfterCommit() {
+        var created = existingReviewWithImage();
+        var oldFile = storedImage(created.getImageUrl());
+        var update = new UpdateReviewRequest();
+        update.setRating(4.0);
+
+        var result = service.updateReview(1L, created.getId(), update, png());
+
+        var newFile = storedImage(result.getImageUrl());
+        assertNotEquals(oldFile, newFile);
+        assertTrue(Files.isRegularFile(newFile));
+        assertTrue(Files.isRegularFile(oldFile));
+
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(TransactionSynchronization::afterCommit);
+        assertFalse(Files.exists(oldFile));
+        assertTrue(Files.isRegularFile(newFile));
+    }
+
+    @Test
+    void keepsOldFileAndRemovesReplacementOnRollback() {
+        var created = existingReviewWithImage();
+        var oldFile = storedImage(created.getImageUrl());
+        var update = new UpdateReviewRequest();
+        update.setRating(4.0);
+
+        var result = service.updateReview(1L, created.getId(), update, png());
+
+        var newFile = storedImage(result.getImageUrl());
+        assertTrue(Files.isRegularFile(newFile));
+        TransactionSynchronizationManager.getSynchronizations().forEach(callback ->
+                callback.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
+        assertTrue(Files.isRegularFile(oldFile));
+        assertFalse(Files.exists(newFile));
+    }
+
+    @Test
+    void rejectsReplacementWithRemoveImageBeforeUploading() {
+        var created = existingReviewWithImage();
+        var originalImageUrl = created.getImageUrl();
+        var update = new UpdateReviewRequest();
+        update.setRating(4.0);
+        update.setRemoveImage(true);
+
+        assertThrows(BadRequestException.class,
+                () -> service.updateReview(1L, created.getId(), update, png()));
+        assertEquals(originalImageUrl, created.getImageUrl());
+        assertTrue(TransactionSynchronizationManager.getSynchronizations().isEmpty());
+    }
+
+    @Test
+    void rejectsWrongOwnerAndInvalidReplacementBeforeUploading() {
+        var created = existingReviewWithImage();
+        var originalImageUrl = created.getImageUrl();
+        var update = new UpdateReviewRequest();
+        update.setRating(4.0);
+        var invalidFile = new MockMultipartFile(
+                "image", "image.png", "image/png", "invalid".getBytes(StandardCharsets.UTF_8));
+
+        assertThrows(AccessDeniedException.class,
+                () -> service.updateReview(9L, created.getId(), update, png()));
+        assertThrows(BadRequestException.class,
+                () -> service.updateReview(1L, created.getId(), update, invalidFile));
+        assertEquals(originalImageUrl, created.getImageUrl());
+        assertTrue(TransactionSynchronizationManager.getSynchronizations().isEmpty());
     }
 
     private Review existingReviewWithImage() {
@@ -155,6 +224,9 @@ class ReviewServiceImplTest {
             return review;
         });
         service.createReview(1L, request, png());
+        // Use a new synchronization context for the update to model a separate transaction.
+        TransactionSynchronizationManager.clearSynchronization();
+        TransactionSynchronizationManager.initSynchronization();
         var saved = ArgumentCaptor.forClass(Review.class);
         verify(reviews).save(saved.capture());
         var review = saved.getValue();

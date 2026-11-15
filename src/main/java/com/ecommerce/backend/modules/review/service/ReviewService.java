@@ -20,7 +20,7 @@ public interface ReviewService {
 
     ReviewResponse createReview(Long userId, ReviewRequest request, MultipartFile image);
 
-    ReviewResponse updateReview(Long userId, Long reviewId, UpdateReviewRequest request);
+    ReviewResponse updateReview(Long userId, Long reviewId, UpdateReviewRequest request, MultipartFile image);
 
     void deleteReview(Long userId, Long reviewId);
 

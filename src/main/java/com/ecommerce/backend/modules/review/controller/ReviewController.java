@@ -56,12 +56,15 @@ public class ReviewController {
             @Valid @ModelAttribute ReviewRequest request,
             @RequestParam(name = "image", required = false) List<MultipartFile> images) {
 
+        return createdReview(jwt, request, singleReviewImage(images));
+    }
+
+    private MultipartFile singleReviewImage(List<MultipartFile> images) {
         if (images != null && images.size() > 1) {
             throw new BadRequestException("Only one review image is allowed.");
         }
 
-        MultipartFile image = images == null || images.isEmpty() ? null : images.getFirst();
-        return createdReview(jwt, request, image);
+        return images == null || images.isEmpty() ? null : images.getFirst();
     }
 
     private ResponseEntity<ReviewResponse> createdReview(Jwt jwt, ReviewRequest request, MultipartFile image) {
@@ -76,7 +79,18 @@ public class ReviewController {
             @Valid @RequestBody UpdateReviewRequest request) {
 
         Long userId = extractUserId(jwt);
-        return ResponseEntity.ok(reviewService.updateReview(userId, reviewId, request));
+        return ResponseEntity.ok(reviewService.updateReview(userId, reviewId, request, null));
+    }
+
+    @PutMapping(value = "/{reviewId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ReviewResponse> updateReviewWithImage(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long reviewId,
+            @Valid @ModelAttribute UpdateReviewRequest request,
+            @RequestParam(name = "image", required = false) List<MultipartFile> images) {
+
+        Long userId = extractUserId(jwt);
+        return ResponseEntity.ok(reviewService.updateReview(userId, reviewId, request, singleReviewImage(images)));
     }
 
     @DeleteMapping("/{reviewId}")
