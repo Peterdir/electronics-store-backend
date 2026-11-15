@@ -1,6 +1,6 @@
 package com.ecommerce.backend.modules.review.controller;
 
-import com.ecommerce.backend.modules.auth.entity.User;
+import com.ecommerce.backend.common.exception.BadRequestException;
 import com.ecommerce.backend.modules.review.dto.request.ReviewRequest;
 import com.ecommerce.backend.modules.review.dto.response.PendingReviewResponse;
 import com.ecommerce.backend.modules.review.dto.response.ReviewResponse;
@@ -8,10 +8,12 @@ import com.ecommerce.backend.modules.review.service.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Objects;
@@ -39,13 +41,30 @@ public class ReviewController {
         return ResponseEntity.ok(reviewService.getPendingReviews(userId));
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ReviewResponse> createReview(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody ReviewRequest request) {
 
-        Long userId = extractUserId(jwt);
-        ReviewResponse response = reviewService.createReview(userId, request);
+        return createdReview(jwt, request, null);
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ReviewResponse> createReviewWithImage(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @ModelAttribute ReviewRequest request,
+            @RequestParam(name = "image", required = false) List<MultipartFile> images) {
+
+        if (images != null && images.size() > 1) {
+            throw new BadRequestException("Only one review image is allowed.");
+        }
+
+        MultipartFile image = images == null || images.isEmpty() ? null : images.getFirst();
+        return createdReview(jwt, request, image);
+    }
+
+    private ResponseEntity<ReviewResponse> createdReview(Jwt jwt, ReviewRequest request, MultipartFile image) {
+        ReviewResponse response = reviewService.createReview(extractUserId(jwt), request, image);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

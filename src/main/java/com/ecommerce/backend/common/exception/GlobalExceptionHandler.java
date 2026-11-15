@@ -8,6 +8,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -81,6 +82,16 @@ public class GlobalExceptionHandler {
                 .message(ex.getMessage() != null ? ex.getMessage() : "Access is denied")
                 .build();
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleUploadTooLarge() {
+        return ResponseEntity.status(413).body(ErrorResponse.builder()
+                .timestamp(Instant.now())
+                .status(413)
+                .error("Payload Too Large")
+                .message("The upload exceeds the allowed file or request size.")
+                .build());
     }
 
     @ExceptionHandler(Exception.class)

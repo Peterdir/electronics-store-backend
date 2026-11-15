@@ -7,6 +7,7 @@ import com.ecommerce.backend.modules.review.dto.response.PendingReviewResponse;
 import com.ecommerce.backend.modules.review.dto.response.ReviewResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -16,7 +17,7 @@ public interface ReviewService {
 
     List<PendingReviewResponse> getPendingReviews(Long userId);
 
-    ReviewResponse createReview(Long userId, ReviewRequest request);
+    ReviewResponse createReview(Long userId, ReviewRequest request, MultipartFile image);
 
     ReviewResponse updateReview(Long userId, Long reviewId, ReviewRequest request);
 

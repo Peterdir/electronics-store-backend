@@ -30,7 +30,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -130,11 +130,9 @@ class ProductServiceImplTest {
             variantReq.setAttributes(attrs);
             request.setVariants(List.of(variantReq));
 
-            MultipartFile mockFile = mock(MultipartFile.class);
-            when(mockFile.isEmpty()).thenReturn(false);
-            when(mockFile.getContentType()).thenReturn("image/png");
-            when(mockFile.getOriginalFilename()).thenReturn("phone.png");
-            when(mockFile.getSize()).thenReturn(1024L);
+            byte[] png = Base64.getDecoder().decode(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9ZoAAAAASUVORK5CYII=");
+            var mockFile = new MockMultipartFile("images", "phone.png", "image/png", png);
 
             when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
             when(brandRepository.findById(1L)).thenReturn(Optional.of(testBrand));

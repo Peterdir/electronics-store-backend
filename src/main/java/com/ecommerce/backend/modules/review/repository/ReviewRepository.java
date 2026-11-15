@@ -20,7 +20,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     // Kiểm tra User đã Review Product chưa
     boolean existsByUserIdAndOrderItemIdAndIsDeletedFalse(Long userId, Long orderItemId);
 
-    @Query("SELECT AVERAGE(r.rating) " +
+    @Query("SELECT AVG(r.rating) " +
             "FROM Review r " +
             "WHERE r.product.id = :productId AND r.isDeleted = false")
     Double getAverageRatingByProductId(@Param("productId") Long productId);

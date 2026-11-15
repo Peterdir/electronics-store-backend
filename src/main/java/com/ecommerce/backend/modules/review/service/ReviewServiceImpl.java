@@ -4,7 +4,7 @@ import com.ecommerce.backend.common.exception.BadRequestException;
 import com.ecommerce.backend.common.exception.DuplicateResourceException;
 import com.ecommerce.backend.common.exception.ResourceNotFoundException;
 import com.ecommerce.backend.modules.auth.entity.User;
-import com.ecommerce.backend.modules.auth.repository.UserRepository;
+import com.ecommerce.backend.modules.order.entity.Order;
 import com.ecommerce.backend.modules.order.entity.OrderItem;
 import com.ecommerce.backend.modules.order.enums.OrderStatus;
 import com.ecommerce.backend.modules.order.repository.OrderItemRepository;
@@ -12,7 +12,8 @@ import com.ecommerce.backend.modules.product.entity.Product;
 import com.ecommerce.backend.modules.product.entity.ProductImage;
 import com.ecommerce.backend.modules.product.entity.ProductVariant;
 import com.ecommerce.backend.modules.product.repository.ProductRepository;
-import com.ecommerce.backend.modules.product.repository.ProductVariantRepository;
+import com.ecommerce.backend.common.service.FileStorageService;
+import com.ecommerce.backend.common.utils.FileValidator;
 import com.ecommerce.backend.modules.review.dto.request.ReviewReplyRequest;
 import com.ecommerce.backend.modules.review.dto.request.ReviewRequest;
 import com.ecommerce.backend.modules.review.dto.response.AdminReviewResponse;
@@ -21,23 +22,27 @@ import com.ecommerce.backend.modules.review.dto.response.ReviewResponse;
 import com.ecommerce.backend.modules.review.entity.Review;
 import com.ecommerce.backend.modules.review.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ReviewServiceImpl implements ReviewService {
 
     private final ReviewRepository reviewRepository;
-    private final UserRepository userRepository;
     private final ProductRepository productRepository;
-    private final ProductVariantRepository productVariantRepository;
+    private final FileStorageService fileStorageService;
     private final OrderItemRepository orderItemRepository;
 
     private static final List<String> BLACKLIST_WORDS = Arrays.asList("chửi_thề", "cấm", "http://", "https://");
@@ -72,25 +77,34 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional
-    public ReviewResponse createReview(Long userId, ReviewRequest request) {
+    public ReviewResponse createReview(Long userId, ReviewRequest request, MultipartFile image) {
         validateReviewContent(request.getReviewText());
-
-        if (reviewRepository.existsByUserIdAndOrderItemIdAndIsDeletedFalse(userId, request.getOrderItemId())) {
-            throw new DuplicateResourceException("You have already reviewed this item.");
+        if (request.getImageUrl() != null && !request.getImageUrl().isBlank()) {
+            throw new BadRequestException("Send review images as multipart files.");
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        Product product = productRepository.findById(request.getProductId())
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
-
-        OrderItem orderItem = orderItemRepository.findById(request.getOrderItemId())
+        OrderItem orderItem = orderItemRepository.findByIdForUpdate(request.getOrderItemId())
                 .orElseThrow(() -> new ResourceNotFoundException("OrderItem not found"));
+        Order order = orderItem.getOrder();
+        User user = order.getUser();
 
-        ProductVariant variant = request.getProductVariantId() != null
-                ? productVariantRepository.findById(request.getProductVariantId()).orElse(null)
-                : null;
+        if (user == null || !user.getId().equals(userId)) {
+            throw new AccessDeniedException("You do not have permission to review this order item.");
+        }
+        if (order.getOrderStatus() != OrderStatus.DELIVERED) {
+            throw new BadRequestException("Only delivered order items can be reviewed.");
+        }
+
+        ProductVariant variant = orderItem.getProductVariant();
+        Product product = variant.getProduct();
+        if (!product.getId().equals(request.getProductId())
+                || (request.getProductVariantId() != null
+                    && !variant.getId().equals(request.getProductVariantId()))) {
+            throw new BadRequestException("Product or variant does not match the order item.");
+        }
+        if (reviewRepository.existsByUserIdAndOrderItemIdAndIsDeletedFalse(userId, orderItem.getId())) {
+            throw new DuplicateResourceException("You have already reviewed this item.");
+        }
 
         Review review = Review.builder()
                 .user(user)
@@ -99,13 +113,33 @@ public class ReviewServiceImpl implements ReviewService {
                 .orderItem(orderItem)
                 .rating(request.getRating())
                 .reviewText(request.getReviewText())
-                .imageUrl(request.getImageUrl())
+                .imageUrl(image == null ? null : uploadReviewImage(image))
                 .build();
 
         review = reviewRepository.save(review);
         updateProductAverageRating(product.getId());
 
         return mapToReviewResponse(review);
+    }
+
+    private String uploadReviewImage(MultipartFile image) {
+        FileValidator.validateImageFile(image);
+        String imageUrl = fileStorageService.uploadFile(image, "reviews");
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) {
+                    try {
+                        fileStorageService.deleteFile(imageUrl);
+                    } catch (RuntimeException ex) {
+                        log.warn("Could not clean up review image after rollback: {}", imageUrl, ex);
+                    }
+                }
+            }
+        });
+
+        return imageUrl;
     }
 
     @Override
