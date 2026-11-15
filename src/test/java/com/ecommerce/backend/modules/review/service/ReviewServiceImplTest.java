@@ -11,12 +11,14 @@ import com.ecommerce.backend.modules.product.entity.Product;
 import com.ecommerce.backend.modules.product.entity.ProductVariant;
 import com.ecommerce.backend.modules.product.repository.ProductRepository;
 import com.ecommerce.backend.modules.review.dto.request.ReviewRequest;
+import com.ecommerce.backend.modules.review.dto.request.UpdateReviewRequest;
 import com.ecommerce.backend.modules.review.entity.Review;
 import com.ecommerce.backend.modules.review.repository.ReviewRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -111,6 +113,57 @@ class ReviewServiceImplTest {
         TransactionSynchronizationManager.getSynchronizations().forEach(callback ->
                 callback.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK));
         assertFalse(Files.exists(stored));
+    }
+
+    @Test
+    void updatesContentAndKeepsExistingImageWhenRemoveImageIsOmitted() throws Exception {
+        var created = existingReviewWithImage();
+        var update = new UpdateReviewRequest();
+        update.setRating(4.0);
+        update.setReviewText("Updated review");
+
+        var result = service.updateReview(1L, created.getId(), update);
+
+        assertEquals(4.0, result.getRating());
+        assertEquals("Updated review", result.getReviewText());
+        assertEquals(created.getImageUrl(), result.getImageUrl());
+        assertTrue(Files.isRegularFile(storedImage(result.getImageUrl())));
+    }
+
+    @Test
+    void removesExistingImageOnlyAfterCommit() throws Exception {
+        var created = existingReviewWithImage();
+        var stored = storedImage(created.getImageUrl());
+        var update = new UpdateReviewRequest();
+        update.setRating(4.0);
+        update.setRemoveImage(true);
+
+        var result = service.updateReview(1L, created.getId(), update);
+
+        assertNull(result.getImageUrl());
+        assertTrue(Files.isRegularFile(stored));
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(TransactionSynchronization::afterCommit);
+        assertFalse(Files.exists(stored));
+    }
+
+    private Review existingReviewWithImage() {
+        TransactionSynchronizationManager.initSynchronization();
+        when(reviews.save(any(Review.class))).thenAnswer(call -> {
+            Review review = call.getArgument(0);
+            review.setId(5L);
+            return review;
+        });
+        service.createReview(1L, request, png());
+        var saved = ArgumentCaptor.forClass(Review.class);
+        verify(reviews).save(saved.capture());
+        var review = saved.getValue();
+        when(reviews.findActiveByIdForUpdate(review.getId())).thenReturn(Optional.of(review));
+        return review;
+    }
+
+    private Path storedImage(String imageUrl) {
+        return uploadDir.resolve(imageUrl.split("/uploads/", 2)[1]);
     }
 
     private MockMultipartFile png() {

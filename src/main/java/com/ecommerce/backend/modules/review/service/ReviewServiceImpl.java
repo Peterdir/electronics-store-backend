@@ -16,6 +16,7 @@ import com.ecommerce.backend.common.service.FileStorageService;
 import com.ecommerce.backend.common.utils.FileValidator;
 import com.ecommerce.backend.modules.review.dto.request.ReviewReplyRequest;
 import com.ecommerce.backend.modules.review.dto.request.ReviewRequest;
+import com.ecommerce.backend.modules.review.dto.request.UpdateReviewRequest;
 import com.ecommerce.backend.modules.review.dto.response.AdminReviewResponse;
 import com.ecommerce.backend.modules.review.dto.response.PendingReviewResponse;
 import com.ecommerce.backend.modules.review.dto.response.ReviewResponse;
@@ -144,19 +145,17 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional
-    public ReviewResponse updateReview(Long userId, Long reviewId, ReviewRequest request) {
+    public ReviewResponse updateReview(Long userId, Long reviewId, UpdateReviewRequest request) {
+        Review review = getOwnedActiveReviewForUpdate(userId, reviewId);
         validateReviewContent(request.getReviewText());
-
-        Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
-
-        if (!review.getUser().getId().equals(userId)) {
-            throw new AccessDeniedException("Unauthorized action");
-        }
 
         review.setRating(request.getRating());
         review.setReviewText(request.getReviewText());
-        review.setImageUrl(request.getImageUrl());
+        if (Boolean.TRUE.equals(request.getRemoveImage())) {
+            String previousImageUrl = review.getImageUrl();
+            review.setImageUrl(null);
+            deleteReviewImageAfterCommit(previousImageUrl, reviewId);
+        }
 
         reviewRepository.save(review);
         updateProductAverageRating(review.getProduct().getId());
@@ -164,20 +163,43 @@ public class ReviewServiceImpl implements ReviewService {
         return mapToReviewResponse(review);
     }
 
+    private void deleteReviewImageAfterCommit(String imageUrl, Long reviewId) {
+        if (imageUrl == null || !imageUrl.contains("/uploads/reviews/")
+                || reviewRepository.existsByImageUrlAndIdNot(imageUrl, reviewId)) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    fileStorageService.deleteFile(imageUrl);
+                } catch (RuntimeException ex) {
+                    log.warn("Could not delete removed review image: {}", imageUrl, ex);
+                }
+            }
+        });
+    }
+
     @Override
     @Transactional
     public void deleteReview(Long userId, Long reviewId) {
-        Review review = reviewRepository.findById(reviewId)
+        Review review = getOwnedActiveReviewForUpdate(userId, reviewId);
+        review.setDeleted(true);
+        reviewRepository.save(review);
+
+        updateProductAverageRating(review.getProduct().getId());
+    }
+
+    private Review getOwnedActiveReviewForUpdate(Long userId, Long reviewId) {
+        Review review = reviewRepository.findActiveByIdForUpdate(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
 
         if (!review.getUser().getId().equals(userId)) {
             throw new AccessDeniedException("Unauthorized action");
         }
 
-        review.setDeleted(true);
-        reviewRepository.save(review);
-
-        updateProductAverageRating(review.getProduct().getId());
+        return review;
     }
 
     @Override

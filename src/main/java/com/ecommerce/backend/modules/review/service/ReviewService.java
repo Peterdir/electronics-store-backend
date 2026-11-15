@@ -2,6 +2,7 @@ package com.ecommerce.backend.modules.review.service;
 
 import com.ecommerce.backend.modules.review.dto.request.ReviewReplyRequest;
 import com.ecommerce.backend.modules.review.dto.request.ReviewRequest;
+import com.ecommerce.backend.modules.review.dto.request.UpdateReviewRequest;
 import com.ecommerce.backend.modules.review.dto.response.AdminReviewResponse;
 import com.ecommerce.backend.modules.review.dto.response.PendingReviewResponse;
 import com.ecommerce.backend.modules.review.dto.response.ReviewResponse;
@@ -19,7 +20,7 @@ public interface ReviewService {
 
     ReviewResponse createReview(Long userId, ReviewRequest request, MultipartFile image);
 
-    ReviewResponse updateReview(Long userId, Long reviewId, ReviewRequest request);
+    ReviewResponse updateReview(Long userId, Long reviewId, UpdateReviewRequest request);
 
     void deleteReview(Long userId, Long reviewId);
 

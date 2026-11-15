@@ -2,6 +2,7 @@ package com.ecommerce.backend.modules.review.controller;
 
 import com.ecommerce.backend.common.exception.BadRequestException;
 import com.ecommerce.backend.modules.review.dto.request.ReviewRequest;
+import com.ecommerce.backend.modules.review.dto.request.UpdateReviewRequest;
 import com.ecommerce.backend.modules.review.dto.response.PendingReviewResponse;
 import com.ecommerce.backend.modules.review.dto.response.ReviewResponse;
 import com.ecommerce.backend.modules.review.service.ReviewService;
@@ -68,11 +69,11 @@ public class ReviewController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PutMapping("/{reviewId}")
+    @PutMapping(value = "/{reviewId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ReviewResponse> updateReview(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long reviewId,
-            @Valid @RequestBody ReviewRequest request) {
+            @Valid @RequestBody UpdateReviewRequest request) {
 
         Long userId = extractUserId(jwt);
         return ResponseEntity.ok(reviewService.updateReview(userId, reviewId, request));
