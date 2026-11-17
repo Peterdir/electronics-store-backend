@@ -12,6 +12,8 @@ public interface BrandService {
 
     List<BrandResponse> searchBrands(String keyword);
 
+    List<BrandResponse> getBrandsByCategory(Long categoryId, String keyword);
+
     BrandResponse createBrand(BrandRequest request, MultipartFile logoFile);
 
     BrandResponse updateBrand(Long id, BrandRequest request, MultipartFile logoFile);

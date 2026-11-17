@@ -15,10 +15,18 @@ public class BrandController {
     private final BrandService brandService;
 
     @GetMapping
-    public ResponseEntity<List<BrandResponse>> getBrands(@RequestParam(required = false) String keyword) {
+    public ResponseEntity<List<BrandResponse>> getBrands(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId) {
+
+        if (categoryId != null) {
+            return ResponseEntity.ok(brandService.getBrandsByCategory(categoryId, keyword));
+        }
+
         if (keyword != null && !keyword.isBlank()) {
             return ResponseEntity.ok(brandService.searchBrands(keyword));
         }
+
         return ResponseEntity.ok(brandService.getAllBrands());
     }
 

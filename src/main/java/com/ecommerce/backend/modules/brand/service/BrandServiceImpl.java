@@ -8,6 +8,8 @@ import com.ecommerce.backend.modules.brand.repository.BrandRepository;
 import com.ecommerce.backend.modules.brand.dto.request.BrandRequest;
 import com.ecommerce.backend.modules.brand.dto.response.BrandResponse;
 import com.ecommerce.backend.modules.brand.entity.Brand;
+import com.ecommerce.backend.modules.brand.enums.BrandStatus;
+import com.ecommerce.backend.modules.product.enums.ProductStatus;
 import com.ecommerce.backend.modules.brand.mapper.BrandMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,18 @@ public class BrandServiceImpl implements BrandService {
         return brandRepository.findByNameContaining(keyword).stream()
                 .map(brandMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BrandResponse> getBrandsByCategory(Long categoryId, String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return brandRepository.findByCategoryIdAndStatuses(
+                    categoryId, ProductStatus.ACTIVE, BrandStatus.ACTIVE);
+        }
+
+        return brandRepository.findByCategoryIdAndNameContaining(
+                categoryId, ProductStatus.ACTIVE, BrandStatus.ACTIVE, keyword.trim());
     }
 
     @Override
