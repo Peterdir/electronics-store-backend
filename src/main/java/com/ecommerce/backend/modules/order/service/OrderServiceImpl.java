@@ -28,6 +28,7 @@ import com.ecommerce.backend.modules.order.repository.OrderRepository;
 import com.ecommerce.backend.modules.product.entity.ProductVariant;
 import com.ecommerce.backend.modules.product.enums.ProductStatus;
 import com.ecommerce.backend.modules.product.repository.ProductVariantRepository;
+import com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -61,8 +62,27 @@ public class OrderServiceImpl implements OrderService {
             throw new BadRequestException("This account has been locked. Please contact support");
         }
 
-        return orderRepository.findByUserIdAndOrderStatus(userId, orderStatus, pageable)
-                .map(this::mapToOrderListUserResponse);
+        Page<Order> orders;
+        if (orderStatus == null) {
+            orders = orderRepository.findByUserId(userId, pageable);
+        } else {
+            orders = switch (orderStatus) {
+                case RETURN_REQUESTED -> orderRepository.findByUserIdWithPendingReturn(
+                        userId, ReturnStatus.PENDING, OrderStatus.RETURN_REQUESTED, pageable
+                );
+                case RETURNED -> orderRepository.findByUserIdWithReturnStatus(
+                        userId, ReturnStatus.APPROVED, List.of(ReturnStatus.PENDING), OrderStatus.RETURNED, pageable
+                );
+                case RETURN_REJECTED -> orderRepository.findByUserIdWithReturnStatus(
+                        userId, ReturnStatus.REJECTED, List.of(ReturnStatus.PENDING, ReturnStatus.APPROVED), OrderStatus.RETURN_REJECTED, pageable
+                );
+                default -> orderRepository.findByUserIdAndOrderStatusWithoutReturnRequests(
+                        userId, orderStatus, pageable
+                );
+            };
+        }
+
+        return orders.map(this::mapToOrderListUserResponse);
     }
 
     @Override
@@ -336,7 +356,7 @@ public class OrderServiceImpl implements OrderService {
 
     private boolean canUserCancel(Order order) {
         if (order == null || order.getOrderStatus() == null) return false;
-        if (order.getOrderStatus() == OrderStatus.DELIVERED ||
+        if (order.getEffectiveOrderStatus().hasBeenDelivered() ||
             order.getOrderStatus() == OrderStatus.SHIPPED ||
             order.getOrderStatus() == OrderStatus.CANCELLED) {
             return false;
@@ -350,12 +370,12 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) return false;
         return order.getPaymentStatus() == PaymentStatus.UNPAID &&
                order.getOrderStatus() != OrderStatus.CANCELLED &&
-               order.getOrderStatus() != OrderStatus.DELIVERED;
+               order.getEffectiveOrderStatus() != null && !order.getEffectiveOrderStatus().hasBeenDelivered();
     }
 
     private boolean canUserBuyAgain(Order order) {
         if (order == null || order.getOrderStatus() == null) return false;
-        return order.getOrderStatus() == OrderStatus.DELIVERED ||
+        return order.getEffectiveOrderStatus().hasBeenDelivered() ||
                order.getOrderStatus() == OrderStatus.CANCELLED;
     }
 
@@ -372,7 +392,7 @@ public class OrderServiceImpl implements OrderService {
                 .id(order.getId())
                 .orderDate(order.getCreatedAt())
                 .totalPrice(order.getTotalPrice())
-                .orderStatus(order.getOrderStatus())
+                .orderStatus(order.getEffectiveOrderStatus())
                 .paymentStatus(order.getPaymentStatus())
                 .paymentMethod(order.getPaymentMethod())
                 .totalItems(totalItems)
@@ -398,13 +418,14 @@ public class OrderServiceImpl implements OrderService {
                 .couponCode(order.getCouponCode())
                 .discountAmount(order.getDiscountAmount())
                 .totalPrice(order.getTotalPrice())
-                .orderStatus(order.getOrderStatus())
+                .orderStatus(order.getEffectiveOrderStatus())
                 .paymentStatus(order.getPaymentStatus())
                 .paymentMethod(order.getPaymentMethod())
                 .cancelReason(order.getCancelReason())
                 .cancelledAt(order.getCancelledAt())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
+                .returnDeadline(order.getReturnDeadline())
                 .canCancel(canUserCancel(order))
                 .canPay(canUserPay(order))
                 .canBuyAgain(canUserBuyAgain(order))
@@ -422,6 +443,7 @@ public class OrderServiceImpl implements OrderService {
                 .unitPrice(item.getUnitPrice())
                 .quantity(item.getQuantity())
                 .subtotal(item.getSubtotal())
+                .returnStatus(item.getReturnRequest() != null ? item.getReturnRequest().getStatus() : null)
                 .build();
     }
 }

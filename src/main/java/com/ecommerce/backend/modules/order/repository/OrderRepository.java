@@ -4,6 +4,7 @@ import com.ecommerce.backend.modules.dashboard.dto.response.OrderStatusStatRespo
 import com.ecommerce.backend.modules.order.entity.Order;
 import com.ecommerce.backend.modules.order.enums.OrderStatus;
 import com.ecommerce.backend.modules.order.enums.PaymentStatus;
+import com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,12 +47,58 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             Pageable pageable
     );
 
+    Page<Order> findByUserId(Long userId, Pageable pageable);
+
     @Query("""
-        SELECT o FROM Order o WHERE
-        o.user.id = :userId
-        AND (:orderStatus IS NULL OR o.orderStatus = :orderStatus)
+        SELECT o FROM Order o
+        WHERE o.user.id = :userId
+          AND (
+              EXISTS (
+                  SELECT r.id FROM ReturnRequest r
+                  WHERE r.order = o AND r.status = :pendingStatus
+              )
+              OR o.orderStatus = :orderStatus
+              AND NOT EXISTS (SELECT r.id FROM ReturnRequest r WHERE r.order = o)
+          )
         """)
-    Page<Order> findByUserIdAndOrderStatus(
+    Page<Order> findByUserIdWithPendingReturn(
+            @Param("userId") Long userId,
+            @Param("pendingStatus") ReturnStatus pendingStatus,
+            @Param("orderStatus") OrderStatus orderStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT o FROM Order o
+        WHERE o.user.id = :userId
+          AND (
+              EXISTS (
+                  SELECT r.id FROM ReturnRequest r
+                  WHERE r.order = o AND r.status = :targetReturnStatus
+              )
+              AND NOT EXISTS (
+                  SELECT r.id FROM ReturnRequest r
+                  WHERE r.order = o AND r.status IN :higherPriorityStatuses
+              )
+              OR o.orderStatus = :orderStatus
+              AND NOT EXISTS (SELECT r.id FROM ReturnRequest r WHERE r.order = o)
+          )
+        """)
+    Page<Order> findByUserIdWithReturnStatus(
+            @Param("userId") Long userId,
+            @Param("targetReturnStatus") ReturnStatus targetReturnStatus,
+            @Param("higherPriorityStatuses") Collection<ReturnStatus> higherPriorityStatuses,
+            @Param("orderStatus") OrderStatus orderStatus,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT o FROM Order o
+        WHERE o.user.id = :userId
+          AND o.orderStatus = :orderStatus
+          AND NOT EXISTS (SELECT r.id FROM ReturnRequest r WHERE r.order = o)
+        """)
+    Page<Order> findByUserIdAndOrderStatusWithoutReturnRequests(
             @Param("userId") Long userId,
             @Param("orderStatus") OrderStatus orderStatus,
             Pageable pageable

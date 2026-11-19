@@ -29,6 +29,7 @@ import com.ecommerce.backend.modules.product.entity.Product;
 import com.ecommerce.backend.modules.product.entity.ProductVariant;
 import com.ecommerce.backend.modules.product.enums.ProductStatus;
 import com.ecommerce.backend.modules.product.repository.ProductVariantRepository;
+import com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -208,7 +209,7 @@ class OrderServiceImplTest {
             Pageable pageable = PageRequest.of(0, 10);
             Page<Order> orderPage = new PageImpl<>(List.of(order), pageable, 1);
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-            when(orderRepository.findByUserIdAndOrderStatus(1L, null, pageable)).thenReturn(orderPage);
+            when(orderRepository.findByUserId(1L, pageable)).thenReturn(orderPage);
 
             Page<OrderListUserResponse> result = orderService.getMyOrders(1L, null, pageable);
 
@@ -234,7 +235,8 @@ class OrderServiceImplTest {
             order.setPaymentStatus(PaymentStatus.PAID);
             Page<Order> orderPage = new PageImpl<>(List.of(order), pageable, 1);
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-            when(orderRepository.findByUserIdAndOrderStatus(1L, OrderStatus.DELIVERED, pageable)).thenReturn(orderPage);
+            when(orderRepository.findByUserIdAndOrderStatusWithoutReturnRequests(1L, OrderStatus.DELIVERED, pageable))
+                    .thenReturn(orderPage);
 
             Page<OrderListUserResponse> result = orderService.getMyOrders(1L, OrderStatus.DELIVERED, pageable);
 
@@ -248,12 +250,64 @@ class OrderServiceImplTest {
         }
 
         @Test
+        @DisplayName("TC-ORDER-02B [Positive]: Get user order history filtered by RETURN_REQUESTED tab")
+        void getMyOrders_WithReturnRequestedFilter_Success() {
+            Pageable pageable = PageRequest.of(0, 10);
+            order.setOrderStatus(OrderStatus.RETURN_REQUESTED);
+            Page<Order> orderPage = new PageImpl<>(List.of(order), pageable, 1);
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+            when(orderRepository.findByUserIdWithPendingReturn(1L, ReturnStatus.PENDING, OrderStatus.RETURN_REQUESTED, pageable))
+                    .thenReturn(orderPage);
+
+            Page<OrderListUserResponse> result = orderService.getMyOrders(1L, OrderStatus.RETURN_REQUESTED, pageable);
+
+            assertEquals(1, result.getTotalElements());
+            verify(orderRepository).findByUserIdWithPendingReturn(1L, ReturnStatus.PENDING, OrderStatus.RETURN_REQUESTED, pageable);
+        }
+
+        @Test
+        @DisplayName("TC-ORDER-02C [Positive]: Get user order history filtered by RETURNED tab")
+        void getMyOrders_WithReturnedFilter_Success() {
+            Pageable pageable = PageRequest.of(0, 10);
+            order.setOrderStatus(OrderStatus.RETURNED);
+            Page<Order> orderPage = new PageImpl<>(List.of(order), pageable, 1);
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+            when(orderRepository.findByUserIdWithReturnStatus(
+                    1L, ReturnStatus.APPROVED, List.of(ReturnStatus.PENDING), OrderStatus.RETURNED, pageable))
+                    .thenReturn(orderPage);
+
+            Page<OrderListUserResponse> result = orderService.getMyOrders(1L, OrderStatus.RETURNED, pageable);
+
+            assertEquals(1, result.getTotalElements());
+            verify(orderRepository).findByUserIdWithReturnStatus(
+                    1L, ReturnStatus.APPROVED, List.of(ReturnStatus.PENDING), OrderStatus.RETURNED, pageable);
+        }
+
+        @Test
+        @DisplayName("TC-ORDER-02D [Positive]: Get user order history filtered by RETURN_REJECTED tab")
+        void getMyOrders_WithReturnRejectedFilter_Success() {
+            Pageable pageable = PageRequest.of(0, 10);
+            order.setOrderStatus(OrderStatus.RETURN_REJECTED);
+            Page<Order> orderPage = new PageImpl<>(List.of(order), pageable, 1);
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+            when(orderRepository.findByUserIdWithReturnStatus(
+                    1L, ReturnStatus.REJECTED, List.of(ReturnStatus.PENDING, ReturnStatus.APPROVED), OrderStatus.RETURN_REJECTED, pageable))
+                    .thenReturn(orderPage);
+
+            Page<OrderListUserResponse> result = orderService.getMyOrders(1L, OrderStatus.RETURN_REJECTED, pageable);
+
+            assertEquals(1, result.getTotalElements());
+            verify(orderRepository).findByUserIdWithReturnStatus(
+                    1L, ReturnStatus.REJECTED, List.of(ReturnStatus.PENDING, ReturnStatus.APPROVED), OrderStatus.RETURN_REJECTED, pageable);
+        }
+
+        @Test
         @DisplayName("TC-ORDER-03 [Boundary - E1]: User with no orders receives empty page")
         void getMyOrders_EmptyHistory_ReturnsEmptyPage() {
             Pageable pageable = PageRequest.of(0, 10);
             Page<Order> emptyPage = new PageImpl<>(List.of(), pageable, 0);
             when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-            when(orderRepository.findByUserIdAndOrderStatus(1L, null, pageable)).thenReturn(emptyPage);
+            when(orderRepository.findByUserId(1L, pageable)).thenReturn(emptyPage);
 
             Page<OrderListUserResponse> result = orderService.getMyOrders(1L, null, pageable);
 
@@ -273,7 +327,7 @@ class OrderServiceImplTest {
                     orderService.getMyOrders(1L, null, pageable)
             );
             assertEquals("This account has been locked. Please contact support", ex.getMessage());
-            verify(orderRepository, never()).findByUserIdAndOrderStatus(any(), any(), any());
+            verify(orderRepository, never()).findByUserId(any(), any());
         }
 
         @Test
