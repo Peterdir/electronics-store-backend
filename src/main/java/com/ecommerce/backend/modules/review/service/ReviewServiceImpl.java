@@ -92,7 +92,7 @@ public class ReviewServiceImpl implements ReviewService {
         if (user == null || !user.getId().equals(userId)) {
             throw new AccessDeniedException("You do not have permission to review this order item.");
         }
-        if (order.getOrderStatus() != OrderStatus.DELIVERED) {
+        if (order.getOrderStatus() == null || !order.getOrderStatus().hasBeenDelivered()) {
             throw new BadRequestException("Only delivered order items can be reviewed.");
         }
 

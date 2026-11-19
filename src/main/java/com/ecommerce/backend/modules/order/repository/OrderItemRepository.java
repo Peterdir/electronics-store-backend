@@ -23,7 +23,10 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             SELECT oi FROM OrderItem oi
             JOIN oi.order o
             WHERE o.user.id = :userId
-            AND o.orderStatus = :status
+            AND (o.orderStatus = :status OR o.orderStatus IN (
+                com.ecommerce.backend.modules.order.enums.OrderStatus.RETURN_REQUESTED,
+                com.ecommerce.backend.modules.order.enums.OrderStatus.RETURNED,
+                com.ecommerce.backend.modules.order.enums.OrderStatus.RETURN_REJECTED))
             AND NOT EXISTS (SELECT r FROM Review r WHERE r.orderItem.id = oi.id AND r.isDeleted = false) 
             """)
     List<OrderItem> findPendingReviewItems(@Param("userId") Long userId, @Param("status") OrderStatus status);
