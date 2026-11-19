@@ -10,6 +10,11 @@ public enum OrderStatus {
     RETURNED,
     RETURN_REJECTED;
 
+    public boolean hasBeenDelivered() {
+        return this == DELIVERED || this == RETURN_REQUESTED
+                || this == RETURNED || this == RETURN_REJECTED;
+    }
+
     public boolean canTransitionTo(OrderStatus newStatus) {
         if (newStatus == null || this == newStatus) {
             return false;

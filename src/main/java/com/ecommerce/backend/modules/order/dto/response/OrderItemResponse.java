@@ -1,6 +1,7 @@
 package com.ecommerce.backend.modules.order.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -26,4 +27,5 @@ public class OrderItemResponse {
     private Integer quantity;
 
     private BigDecimal subtotal;
+    private ReturnStatus returnStatus;
 }

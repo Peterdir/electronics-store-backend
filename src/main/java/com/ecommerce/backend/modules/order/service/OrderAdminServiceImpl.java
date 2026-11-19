@@ -110,7 +110,7 @@ public class OrderAdminServiceImpl implements OrderAdminService {
         switch (order.getOrderStatus()) {
             case SHIPPED ->
                     throw new BadRequestException("This order can no longer be cancelled as it has already been shipped.");
-            case DELIVERED ->
+            case DELIVERED, RETURN_REQUESTED, RETURNED, RETURN_REJECTED ->
                     throw new BadRequestException("Cannot cancel an order that has already been delivered.");
             case CANCELLED ->
                     throw new BadRequestException("This order is already cancelled.");

@@ -46,6 +46,7 @@ public class OrderDetailUserResponse {
     // Thời gian
     private Instant createdAt;
     private Instant updatedAt;
+    private Instant returnDeadline;
 
     // Cờ hành động
     private Boolean canCancel;

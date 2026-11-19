@@ -12,6 +12,7 @@ import com.ecommerce.backend.modules.order.entity.Order;
 import com.ecommerce.backend.modules.order.entity.OrderItem;
 import com.ecommerce.backend.modules.order.enums.OrderStatus;
 import com.ecommerce.backend.modules.order.repository.OrderItemRepository;
+import com.ecommerce.backend.modules.order.repository.OrderRepository;
 import com.ecommerce.backend.modules.product.entity.ProductVariant;
 import com.ecommerce.backend.modules.returnrequest.dto.request.ReturnRequestCreateRequest;
 import com.ecommerce.backend.modules.returnrequest.dto.request.ReturnRequestProcessRequest;
@@ -31,7 +32,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +42,7 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
 
     private final ReturnRequestRepository returnRequestRepository;
     private final OrderItemRepository orderItemRepository;
+    private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final ReturnRequestMapper returnRequestMapper;
@@ -55,17 +56,18 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
         OrderItem orderItem = orderItemRepository.findById(request.getOrderItemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order item not found"));
 
-        Order order = orderItem.getOrder();
+        Order order = orderRepository.findByIdForUpdate(orderItem.getOrder().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
         if (!order.getUser().getId().equals(userId)) {
             throw new AccessDeniedException("You do not have permission to access this order item.");
         }
 
-        if (order.getOrderStatus() != OrderStatus.DELIVERED) {
-            throw new BadRequestException("Only DELIVERED orders can be returned.");
+        if (order.getOrderStatus() == null || !order.getOrderStatus().hasBeenDelivered()) {
+            throw new BadRequestException("Only delivered orders can be returned.");
         }
 
-        Instant returnDeadline = order.getUpdatedAt().plus(7, ChronoUnit.DAYS);
+        Instant returnDeadline = order.getReturnDeadline();
         if (Instant.now().isAfter(returnDeadline)) {
             throw new BadRequestException("The return period (7 days) for this item has expired.");
         }
@@ -79,9 +81,12 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
         }
 
         List<String> uploadedImageUrls = new ArrayList<>();
-        List<MultipartFile> images = request.getImages();
+        List<MultipartFile> images = request.getImages() == null ? List.of() : request.getImages();
+        String reason = request.getReason().trim();
+        boolean requiresImages = "Sản phẩm bị lỗi hoặc không hoạt động".equals(reason)
+                || "Sản phẩm bị hư hỏng, móp méo hoặc vỡ".equals(reason);
 
-        if (images == null || images.isEmpty()) {
+        if (requiresImages && images.isEmpty()) {
             throw new BadRequestException("Please upload at least one image as proof of the issue.");
         }
 
@@ -100,13 +105,17 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
                 .order(order)
                 .orderItem(orderItem)
                 .quantity(request.getQuantity())
-                .reason(request.getReason())
+                .reason(reason)
                 .description(request.getDescription())
                 .status(ReturnStatus.PENDING)
                 .imageUrls(uploadedImageUrls)
                 .build();
 
         ReturnRequest savedRequest = returnRequestRepository.save(returnRequest);
+        order.setReturnDeadline(returnDeadline);
+        order.getReturnRequests().add(savedRequest);
+        orderItem.setReturnRequest(savedRequest);
+        order.setOrderStatus(OrderStatus.RETURN_REQUESTED);
 
         return returnRequestMapper.toResponse(savedRequest);
     }
@@ -122,18 +131,19 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
 
     @Override
     public ReturnRequestResponse processReturnRequest(Long id, ReturnRequestProcessRequest request) {
-        ReturnRequest returnRequest = returnRequestRepository.findById(id)
+        ReturnRequest returnRequest = returnRequestRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Return request not found"));
 
         if (returnRequest.getStatus() != ReturnStatus.PENDING) {
             throw new BadRequestException("This return request has already been processed or cancelled.");
         }
 
-        Order order = returnRequest.getOrder();
+        Order order = orderRepository.findByIdForUpdate(returnRequest.getOrder().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        order.setReturnDeadline(order.getReturnDeadline());
 
         if (request.getStatus() == ReturnStatus.APPROVED) {
             returnRequest.setStatus(ReturnStatus.APPROVED);
-            order.setOrderStatus(OrderStatus.RETURNED);
 
             ProductVariant variant = returnRequest.getOrderItem().getProductVariant();
             Inventory inventory = variant.getInventory();
@@ -145,11 +155,11 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
             }
             returnRequest.setStatus(ReturnStatus.REJECTED);
             returnRequest.setAdminNote(request.getRejectReason());
-            order.setOrderStatus(OrderStatus.RETURN_REJECTED);
         } else {
              throw new BadRequestException("Invalid return status in request.");
         }
 
+        order.setOrderStatus(order.getEffectiveOrderStatus());
         return returnRequestMapper.toResponse(returnRequestRepository.save(returnRequest));
     }
 }

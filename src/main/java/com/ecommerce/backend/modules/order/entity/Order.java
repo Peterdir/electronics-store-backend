@@ -6,6 +6,8 @@ import com.ecommerce.backend.modules.order.enums.OrderStatus;
 import com.ecommerce.backend.modules.order.enums.PaymentMethod;
 import com.ecommerce.backend.modules.order.enums.PaymentStatus;
 import com.ecommerce.backend.modules.returnrequest.entity.ReturnRequest;
+import com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus;
+import java.time.temporal.ChronoUnit;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
@@ -65,6 +67,26 @@ public class Order {
 
     private Instant createdAt;
     private Instant updatedAt;
+    private Instant returnDeadline;
+
+    public Instant getReturnDeadline() {
+        if (returnDeadline != null) return returnDeadline;
+        return updatedAt != null && orderStatus != null && orderStatus.hasBeenDelivered()
+                ? updatedAt.plus(7, ChronoUnit.DAYS) : null;
+    }
+
+    public OrderStatus getEffectiveOrderStatus() {
+        if (returnRequests.stream().anyMatch(request -> request.getStatus() == ReturnStatus.PENDING)) {
+            return OrderStatus.RETURN_REQUESTED;
+        }
+        if (returnRequests.stream().anyMatch(request -> request.getStatus() == ReturnStatus.APPROVED)) {
+            return OrderStatus.RETURNED;
+        }
+        if (returnRequests.stream().anyMatch(request -> request.getStatus() == ReturnStatus.REJECTED)) {
+            return OrderStatus.RETURN_REJECTED;
+        }
+        return orderStatus;
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
