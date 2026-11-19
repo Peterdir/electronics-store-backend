@@ -14,7 +14,7 @@ import java.time.Instant;
 public class WishlistItemResponse {
 
     @JsonFormat(shape = JsonFormat.Shape.STRING)
-    private Long id; // Wishlist entry id
+    private Long id;
     
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long productId;
