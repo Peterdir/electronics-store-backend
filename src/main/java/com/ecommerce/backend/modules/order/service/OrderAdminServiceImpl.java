@@ -189,7 +189,7 @@ public class OrderAdminServiceImpl implements OrderAdminService {
                 .totalPrice(order.getTotalPrice())
                 .orderDate(order.getCreatedAt())
                 .paymentStatus(order.getPaymentStatus())
-                .orderStatus(order.getOrderStatus())
+                .orderStatus(order.getEffectiveOrderStatus())
                 .build();
     }
 
@@ -219,7 +219,7 @@ public class OrderAdminServiceImpl implements OrderAdminService {
                 .couponCode(order.getCouponCode())
                 .discountAmount(order.getDiscountAmount())
                 .totalPrice(order.getTotalPrice())
-                .orderStatus(order.getOrderStatus())
+                .orderStatus(order.getEffectiveOrderStatus())
                 .paymentStatus(order.getPaymentStatus())
                 .paymentMethod(order.getPaymentMethod())
                 .cancelReason(order.getCancelReason())

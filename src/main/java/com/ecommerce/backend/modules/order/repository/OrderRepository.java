@@ -37,7 +37,26 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         o.recipientPhone LIKE LOWER(CONCAT('%', :keyword, '%')) OR
         str(o.id) LIKE CONCAT('%', :keyword, '%')
         )
-        AND (:orderStatus IS NULL OR :orderStatus = o.orderStatus)
+        AND (
+            :orderStatus IS NULL
+            OR (o.orderStatus = :orderStatus
+                AND NOT EXISTS (SELECT r.id FROM ReturnRequest r WHERE r.order = o))
+            OR (:orderStatus = com.ecommerce.backend.modules.order.enums.OrderStatus.RETURN_REQUESTED
+                AND EXISTS (SELECT r.id FROM ReturnRequest r WHERE r.order = o
+                            AND r.status = com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus.PENDING))
+            OR (:orderStatus = com.ecommerce.backend.modules.order.enums.OrderStatus.RETURNED
+                AND EXISTS (SELECT r.id FROM ReturnRequest r WHERE r.order = o
+                            AND r.status = com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus.APPROVED)
+                AND NOT EXISTS (SELECT r.id FROM ReturnRequest r WHERE r.order = o
+                                AND r.status = com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus.PENDING))
+            OR (:orderStatus = com.ecommerce.backend.modules.order.enums.OrderStatus.RETURN_REJECTED
+                AND EXISTS (SELECT r.id FROM ReturnRequest r WHERE r.order = o
+                            AND r.status = com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus.REJECTED)
+                AND NOT EXISTS (SELECT r.id FROM ReturnRequest r WHERE r.order = o
+                                AND r.status IN (
+                                    com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus.PENDING,
+                                    com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus.APPROVED)))
+        )
         AND (:paymentStatus IS NULL OR :paymentStatus = o.paymentStatus)
         """)
     Page<Order> searchOrdersAdmin(
