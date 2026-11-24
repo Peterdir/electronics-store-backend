@@ -12,6 +12,7 @@ import com.ecommerce.backend.modules.product.dto.request.AdminProductRequest;
 import com.ecommerce.backend.modules.product.dto.request.AdminProductVariantRequest;
 import com.ecommerce.backend.modules.product.dto.response.*;
 import com.ecommerce.backend.modules.product.entity.Product;
+import com.ecommerce.backend.modules.product.entity.ProductImage;
 import com.ecommerce.backend.modules.product.entity.ProductVariant;
 import com.ecommerce.backend.modules.product.enums.ProductStatus;
 import com.ecommerce.backend.modules.product.mapper.ProductMapper;
@@ -33,6 +34,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,6 +65,8 @@ class ProductServiceImplTest {
     @InjectMocks
     private ProductServiceImpl productService;
 
+    private static final Instant INITIAL_UPDATED_AT = Instant.parse("2026-01-01T00:00:00Z");
+
     private Product testProduct;
     private Category testCategory;
     private Brand testBrand;
@@ -84,6 +88,9 @@ class ProductServiceImplTest {
                 .status(ProductStatus.ACTIVE)
                 .category(testCategory)
                 .brand(testBrand)
+                .createdAt(INITIAL_UPDATED_AT)
+                .updatedAt(INITIAL_UPDATED_AT)
+                .productImages(new ArrayList<>())
                 .variants(new ArrayList<>())
                 .build();
     }
@@ -109,7 +116,11 @@ class ProductServiceImplTest {
 
             productService.createProduct(request, null);
 
-            verify(productRepository, times(1)).save(any(Product.class));
+            ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+            verify(productRepository, times(1)).save(captor.capture());
+            Product savedProduct = captor.getValue();
+            assertNotNull(savedProduct.getCreatedAt());
+            assertEquals(savedProduct.getCreatedAt(), savedProduct.getUpdatedAt());
         }
 
         @Test
@@ -150,6 +161,9 @@ class ProductServiceImplTest {
             assertEquals(50L, savedProduct.getVariants().get(0).getInventory().getQuantity());
             assertEquals(1, savedProduct.getProductImages().size());
             assertTrue(savedProduct.getProductImages().get(0).getIsPrimary());
+            assertNotNull(savedProduct.getCreatedAt());
+            assertEquals(savedProduct.getCreatedAt(), savedProduct.getUpdatedAt());
+            assertEquals(savedProduct.getCreatedAt(), savedProduct.getVariants().get(0).getInventory().getUpdatedAt());
         }
 
         @Test
@@ -223,6 +237,7 @@ class ProductServiceImplTest {
             assertEquals("Updated iPhone", testProduct.getName());
             assertEquals(new BigDecimal("120"), existingVariant.getPrice());
             assertEquals(25L, existingVariant.getInventory().getQuantity());
+            assertThat(testProduct.getUpdatedAt()).isAfter(INITIAL_UPDATED_AT);
             verify(productRepository, times(1)).save(testProduct);
         }
 
@@ -248,6 +263,129 @@ class ProductServiceImplTest {
             assertEquals(1, testProduct.getVariants().size());
             assertEquals("SKU-NEW", testProduct.getVariants().get(0).getSku());
             assertEquals(30L, testProduct.getVariants().get(0).getInventory().getQuantity());
+            assertThat(testProduct.getUpdatedAt()).isAfter(INITIAL_UPDATED_AT);
+            verify(productRepository, times(1)).save(testProduct);
+        }
+
+        @Test
+        @DisplayName("TC-PROD-06B [Boundary]: Do not update updatedAt or save when no field actually changed")
+        void updateProduct_NoActualChange_DoesNotTouchUpdatedAtOrSave() {
+            Inventory inventory = Inventory.builder()
+                    .quantity(10L)
+                    .updatedAt(INITIAL_UPDATED_AT)
+                    .build();
+            ProductVariant existingVariant = ProductVariant.builder()
+                    .sku("SKU-01")
+                    .price(new BigDecimal("100"))
+                    .attributes(new HashMap<>())
+                    .inventory(inventory)
+                    .build();
+            testProduct.setSpecification(new HashMap<>());
+            testProduct.getVariants().add(existingVariant);
+
+            AdminProductRequest request = new AdminProductRequest();
+            request.setName("iPhone 15");
+            request.setBasePrice(new BigDecimal("999.00"));
+            request.setCategoryId(1L);
+            request.setBrandId(1L);
+            request.setSpecification(null);
+
+            AdminProductVariantRequest variantReq = new AdminProductVariantRequest();
+            variantReq.setSku("SKU-01");
+            variantReq.setPrice(new BigDecimal("100.00"));
+            variantReq.setStock(10L);
+            variantReq.setAttributes(null);
+            request.setVariants(List.of(variantReq));
+
+            when(productRepository.findById(100L)).thenReturn(Optional.of(testProduct));
+            when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
+            when(brandRepository.findById(1L)).thenReturn(Optional.of(testBrand));
+
+            productService.updateProduct(100L, request);
+
+            assertEquals(INITIAL_UPDATED_AT, testProduct.getUpdatedAt());
+            assertEquals(INITIAL_UPDATED_AT, inventory.getUpdatedAt());
+            verify(productRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("TC-PROD-06C [Positive]: Only variant stock changed updates inventory.updatedAt without changing product.updatedAt")
+        void updateProduct_OnlyStockChanged_UpdatesInventoryOnly() {
+            Inventory inventory = Inventory.builder()
+                    .quantity(10L)
+                    .updatedAt(INITIAL_UPDATED_AT)
+                    .build();
+            ProductVariant existingVariant = ProductVariant.builder()
+                    .sku("SKU-01")
+                    .price(new BigDecimal("100"))
+                    .attributes(Map.of("color", "Black"))
+                    .inventory(inventory)
+                    .build();
+            testProduct.getVariants().add(existingVariant);
+
+            AdminProductRequest request = new AdminProductRequest();
+            request.setName("iPhone 15");
+            request.setBasePrice(new BigDecimal("999"));
+            request.setCategoryId(1L);
+            request.setBrandId(1L);
+
+            AdminProductVariantRequest variantReq = new AdminProductVariantRequest();
+            variantReq.setSku("SKU-01");
+            variantReq.setPrice(new BigDecimal("100"));
+            variantReq.setStock(25L);
+            variantReq.setAttributes(Map.of("color", "Black"));
+            request.setVariants(List.of(variantReq));
+
+            when(productRepository.findById(100L)).thenReturn(Optional.of(testProduct));
+            when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
+            when(brandRepository.findById(1L)).thenReturn(Optional.of(testBrand));
+
+            productService.updateProduct(100L, request);
+
+            assertEquals(25L, inventory.getQuantity());
+            assertThat(inventory.getUpdatedAt()).isAfter(INITIAL_UPDATED_AT);
+            assertEquals(INITIAL_UPDATED_AT, testProduct.getUpdatedAt());
+            verify(productRepository, times(1)).save(testProduct);
+        }
+
+        @Test
+        @DisplayName("TC-PROD-06D [Positive]: Variant price or attributes changed updates product.updatedAt without changing inventory.updatedAt")
+        void updateProduct_OnlyVariantPriceOrAttributesChanged_UpdatesProductUpdatedAt() {
+            Inventory inventory = Inventory.builder()
+                    .quantity(10L)
+                    .updatedAt(INITIAL_UPDATED_AT)
+                    .build();
+            ProductVariant existingVariant = ProductVariant.builder()
+                    .sku("SKU-01")
+                    .price(new BigDecimal("100"))
+                    .attributes(Map.of("color", "Black"))
+                    .inventory(inventory)
+                    .build();
+            testProduct.getVariants().add(existingVariant);
+
+            AdminProductRequest request = new AdminProductRequest();
+            request.setName("iPhone 15");
+            request.setBasePrice(new BigDecimal("999"));
+            request.setCategoryId(1L);
+            request.setBrandId(1L);
+
+            AdminProductVariantRequest variantReq = new AdminProductVariantRequest();
+            variantReq.setSku("SKU-01");
+            variantReq.setPrice(new BigDecimal("120"));
+            variantReq.setStock(10L);
+            variantReq.setAttributes(Map.of("color", "White"));
+            request.setVariants(List.of(variantReq));
+
+            when(productRepository.findById(100L)).thenReturn(Optional.of(testProduct));
+            when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
+            when(brandRepository.findById(1L)).thenReturn(Optional.of(testBrand));
+
+            productService.updateProduct(100L, request);
+
+            assertEquals(new BigDecimal("120"), existingVariant.getPrice());
+            assertEquals(Map.of("color", "White"), existingVariant.getAttributes());
+            assertThat(testProduct.getUpdatedAt()).isAfter(INITIAL_UPDATED_AT);
+            assertEquals(INITIAL_UPDATED_AT, inventory.getUpdatedAt());
             verify(productRepository, times(1)).save(testProduct);
         }
 
@@ -312,6 +450,7 @@ class ProductServiceImplTest {
 
             assertThat(testProduct.getStatus()).isEqualTo(ProductStatus.INACTIVE);
             assertThat(variant.getStatus()).isEqualTo(ProductStatus.INACTIVE);
+            assertThat(testProduct.getUpdatedAt()).isAfter(INITIAL_UPDATED_AT);
             verify(productRepository, times(1)).save(testProduct);
         }
 
@@ -325,6 +464,7 @@ class ProductServiceImplTest {
                     productService.changeProductStatus(100L, ProductStatus.ACTIVE)
             );
             assertThat(ex.getMessage()).isEqualTo("Product is already in ACTIVE status.");
+            assertEquals(INITIAL_UPDATED_AT, testProduct.getUpdatedAt());
             verify(productRepository, never()).save(any());
         }
 
@@ -565,6 +705,153 @@ class ProductServiceImplTest {
             assertTrue(productService.getSearchSuggestions("   ").isEmpty());
             assertTrue(productService.getSearchSuggestions(null).isEmpty());
             verify(productRepository, never()).findTop5ByNameContaining(anyString());
+        }
+    }
+
+    // =========================================================================
+    // AC-PROD-09: Quản lý ảnh sản phẩm (addProductImages, deleteProductImage, setPrimaryProductImage)
+    // =========================================================================
+    @Nested
+    @DisplayName("AC-PROD-09: Product Image Management Tests")
+    class ProductImageManagementTests {
+
+        @Test
+        @DisplayName("TC-PROD-24 [Positive]: Add product images updates product.updatedAt and saves")
+        void addProductImages_WithValidImage_UpdatesUpdatedAtAndSaves() {
+            byte[] png = Base64.getDecoder().decode(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9ZoAAAAASUVORK5CYII=");
+            var mockFile = new MockMultipartFile("images", "phone.png", "image/png", png);
+
+            when(productRepository.findById(100L)).thenReturn(Optional.of(testProduct));
+            when(fileStorageService.uploadFile(mockFile, "products")).thenReturn("http://cdn/phone.png");
+
+            productService.addProductImages(100L, List.of(mockFile));
+
+            assertEquals(1, testProduct.getProductImages().size());
+            assertThat(testProduct.getUpdatedAt()).isAfter(INITIAL_UPDATED_AT);
+            verify(productRepository, times(1)).save(testProduct);
+        }
+
+        @Test
+        @DisplayName("TC-PROD-25 [Boundary]: Add empty or null product images does not update updatedAt or save")
+        void addProductImages_EmptyOrNull_DoesNotUpdateUpdatedAtOrSave() {
+            when(productRepository.findById(100L)).thenReturn(Optional.of(testProduct));
+
+            productService.addProductImages(100L, Collections.emptyList());
+            productService.addProductImages(100L, null);
+
+            assertEquals(INITIAL_UPDATED_AT, testProduct.getUpdatedAt());
+            verify(productRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("TC-PROD-26 [Positive]: Delete existing product image updates primary fallback, updatedAt, and saves")
+        void deleteProductImage_ExistingImage_PromotesPrimaryAndUpdatesUpdatedAt() {
+            ProductImage primary = ProductImage.builder().id(1L).imageUrl("img1.png").isPrimary(true).build();
+            ProductImage secondary = ProductImage.builder().id(2L).imageUrl("img2.png").isPrimary(false).build();
+            testProduct.getProductImages().addAll(List.of(primary, secondary));
+
+            when(productRepository.findById(100L)).thenReturn(Optional.of(testProduct));
+
+            productService.deleteProductImage(100L, 1L);
+
+            assertEquals(1, testProduct.getProductImages().size());
+            assertTrue(testProduct.getProductImages().getFirst().getIsPrimary());
+            assertThat(testProduct.getUpdatedAt()).isAfter(INITIAL_UPDATED_AT);
+            verify(productRepository, times(1)).save(testProduct);
+        }
+
+        @Test
+        @DisplayName("TC-PROD-27 [Negative]: Delete missing product image throws ResourceNotFoundException without changing updatedAt")
+        void deleteProductImage_MissingImage_ThrowsNotFoundWithoutSaving() {
+            when(productRepository.findById(100L)).thenReturn(Optional.of(testProduct));
+
+            assertThrows(ResourceNotFoundException.class, () ->
+                    productService.deleteProductImage(100L, 999L)
+            );
+
+            assertEquals(INITIAL_UPDATED_AT, testProduct.getUpdatedAt());
+            verify(productRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("TC-PROD-28 [Positive]: Switch primary product image updates flags, updatedAt, and saves")
+        void setPrimaryProductImage_SwitchToAnother_UpdatesUpdatedAtAndSaves() {
+            ProductImage img1 = ProductImage.builder().id(1L).imageUrl("img1.png").isPrimary(true).build();
+            ProductImage img2 = ProductImage.builder().id(2L).imageUrl("img2.png").isPrimary(false).build();
+            testProduct.getProductImages().addAll(List.of(img1, img2));
+
+            when(productRepository.findById(100L)).thenReturn(Optional.of(testProduct));
+
+            productService.setPrimaryProductImage(100L, 2L);
+
+            assertFalse(img1.getIsPrimary());
+            assertTrue(img2.getIsPrimary());
+            assertThat(testProduct.getUpdatedAt()).isAfter(INITIAL_UPDATED_AT);
+            verify(productRepository, times(1)).save(testProduct);
+        }
+
+        @Test
+        @DisplayName("TC-PROD-29 [Boundary]: Setting already sole primary image does not update updatedAt or save")
+        void setPrimaryProductImage_AlreadySolePrimary_DoesNotUpdateUpdatedAtOrSave() {
+            ProductImage img1 = ProductImage.builder().id(1L).imageUrl("img1.png").isPrimary(true).build();
+            ProductImage img2 = ProductImage.builder().id(2L).imageUrl("img2.png").isPrimary(false).build();
+            testProduct.getProductImages().addAll(List.of(img1, img2));
+
+            when(productRepository.findById(100L)).thenReturn(Optional.of(testProduct));
+
+            productService.setPrimaryProductImage(100L, 1L);
+
+            assertTrue(img1.getIsPrimary());
+            assertFalse(img2.getIsPrimary());
+            assertEquals(INITIAL_UPDATED_AT, testProduct.getUpdatedAt());
+            verify(productRepository, never()).save(any());
+        }
+    }
+
+    // =========================================================================
+    // AC-PROD-10: Xóa mềm biến thể (deleteProductVariant)
+    // =========================================================================
+    @Nested
+    @DisplayName("AC-PROD-10: Delete Product Variant Tests")
+    class DeleteProductVariantTests {
+
+        @Test
+        @DisplayName("TC-PROD-30 [Positive]: Delete active variant sets INACTIVE, updates updatedAt, and saves")
+        void deleteProductVariant_ActiveVariant_UpdatesUpdatedAtAndSaves() {
+            ProductVariant variant = ProductVariant.builder()
+                    .id(10L)
+                    .sku("SKU-10")
+                    .status(ProductStatus.ACTIVE)
+                    .build();
+            testProduct.getVariants().add(variant);
+
+            when(productRepository.findById(100L)).thenReturn(Optional.of(testProduct));
+
+            productService.deleteProductVariant(100L, 10L);
+
+            assertEquals(ProductStatus.INACTIVE, variant.getStatus());
+            assertThat(testProduct.getUpdatedAt()).isAfter(INITIAL_UPDATED_AT);
+            verify(productRepository, times(1)).save(testProduct);
+        }
+
+        @Test
+        @DisplayName("TC-PROD-31 [Boundary]: Delete already INACTIVE variant does not update updatedAt or save")
+        void deleteProductVariant_AlreadyInactive_DoesNotUpdateUpdatedAtOrSave() {
+            ProductVariant variant = ProductVariant.builder()
+                    .id(10L)
+                    .sku("SKU-10")
+                    .status(ProductStatus.INACTIVE)
+                    .build();
+            testProduct.getVariants().add(variant);
+
+            when(productRepository.findById(100L)).thenReturn(Optional.of(testProduct));
+
+            productService.deleteProductVariant(100L, 10L);
+
+            assertEquals(ProductStatus.INACTIVE, variant.getStatus());
+            assertEquals(INITIAL_UPDATED_AT, testProduct.getUpdatedAt());
+            verify(productRepository, never()).save(any());
         }
     }
 }

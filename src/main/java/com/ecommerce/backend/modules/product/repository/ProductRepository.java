@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,8 +22,8 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     Long countByCategoryId(Long categoryId);
 
     @Modifying
-    @Query("UPDATE Product p SET p.status = :status WHERE p.id = :id")
-    void updateStatus(@Param("id") Long id, @Param("status") ProductStatus status);
+    @Query("UPDATE Product p SET p.status = :status, p.updatedAt = :updatedAt WHERE p.id = :id")
+    void updateStatus(@Param("id") Long id, @Param("status") ProductStatus status, @Param("updatedAt") Instant updatedAt);
 
     @Query("SELECT p FROM Product p WHERE p.id = :id AND p.status = ProductStatus.ACTIVE")
     Optional<Product> findActiveProductById(@Param("id") Long productId);

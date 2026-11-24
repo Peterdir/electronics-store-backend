@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.time.Instant;
 
 import com.ecommerce.backend.modules.product.dto.request.AdminProductRequest;
@@ -55,6 +56,7 @@ public class ProductServiceImpl implements ProductService {
                     .orElseThrow(() -> new ResourceNotFoundException("Brand not found"));
         }
 
+        Instant now = Instant.now();
         Product product = Product.builder()
                 .name(request.getName())
                 .basePrice(request.getBasePrice())
@@ -63,8 +65,8 @@ public class ProductServiceImpl implements ProductService {
                 .status(ProductStatus.ACTIVE)
                 .category(category)
                 .brand(brand)
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
+                .createdAt(now)
+                .updatedAt(now)
                 .build();
 
         if (request.getVariants() != null && !request.getVariants().isEmpty()) {
@@ -79,7 +81,7 @@ public class ProductServiceImpl implements ProductService {
 
                 Inventory inventory = Inventory.builder()
                         .quantity(vReq.getStock())
-                        .updatedAt(Instant.now())
+                        .updatedAt(now)
                         .productVariant(variant)
                         .build();
 
@@ -124,13 +126,39 @@ public class ProductServiceImpl implements ProductService {
                     .orElseThrow(() -> new ResourceNotFoundException("Brand not found"));
         }
 
-        product.setName(request.getName());
-        product.setBasePrice(request.getBasePrice());
-        product.setDescription(request.getDescription());
-        product.setSpecification(request.getSpecification());
-        product.setCategory(category);
-        product.setBrand(brand);
-        product.setUpdatedAt(Instant.now());
+        Instant now = Instant.now();
+        boolean productChanged = false;
+        boolean inventoryChanged = false;
+
+        if (!Objects.equals(product.getName(), request.getName())) {
+            product.setName(request.getName());
+            productChanged = true;
+        }
+        if (!isBigDecimalEqual(product.getBasePrice(), request.getBasePrice())) {
+            product.setBasePrice(request.getBasePrice());
+            productChanged = true;
+        }
+        if (!Objects.equals(product.getDescription(), request.getDescription())) {
+            product.setDescription(request.getDescription());
+            productChanged = true;
+        }
+        if (!isMapEqual(product.getSpecification(), request.getSpecification())) {
+            product.setSpecification(request.getSpecification());
+            productChanged = true;
+        }
+
+        Long existingCategoryId = product.getCategory() != null ? product.getCategory().getId() : null;
+        if (!Objects.equals(existingCategoryId, category.getId())) {
+            product.setCategory(category);
+            productChanged = true;
+        }
+
+        Long existingBrandId = product.getBrand() != null ? product.getBrand().getId() : null;
+        Long newBrandId = brand != null ? brand.getId() : null;
+        if (!Objects.equals(existingBrandId, newBrandId)) {
+            product.setBrand(brand);
+            productChanged = true;
+        }
 
         if (request.getVariants() != null) {
             for (var vReq : request.getVariants()) {
@@ -140,11 +168,19 @@ public class ProductServiceImpl implements ProductService {
 
                 if (existingVariantOpt.isPresent()) {
                     var variant = existingVariantOpt.get();
-                    variant.setPrice(vReq.getPrice());
-                    variant.setAttributes(vReq.getAttributes());
-                    if (variant.getInventory() != null) {
+                    if (!isBigDecimalEqual(variant.getPrice(), vReq.getPrice())) {
+                        variant.setPrice(vReq.getPrice());
+                        productChanged = true;
+                    }
+                    if (!isMapEqual(variant.getAttributes(), vReq.getAttributes())) {
+                        variant.setAttributes(vReq.getAttributes());
+                        productChanged = true;
+                    }
+                    if (variant.getInventory() != null
+                            && !Objects.equals(variant.getInventory().getQuantity(), vReq.getStock())) {
                         variant.getInventory().setQuantity(vReq.getStock());
-                        variant.getInventory().setUpdatedAt(Instant.now());
+                        variant.getInventory().setUpdatedAt(now);
+                        inventoryChanged = true;
                     }
                 } else {
                     ProductVariant newVariant = ProductVariant.builder()
@@ -156,16 +192,23 @@ public class ProductServiceImpl implements ProductService {
                             .build();
                     Inventory inventory = Inventory.builder()
                             .quantity(vReq.getStock())
-                            .updatedAt(Instant.now())
+                            .updatedAt(now)
                             .productVariant(newVariant)
                             .build();
                     newVariant.setInventory(inventory);
                     product.getVariants().add(newVariant);
+                    productChanged = true;
                 }
             }
         }
 
-        productRepository.save(product);
+        if (productChanged) {
+            product.setUpdatedAt(now);
+        }
+
+        if (productChanged || inventoryChanged) {
+            productRepository.save(product);
+        }
     }
 
     @Override
@@ -180,6 +223,7 @@ public class ProductServiceImpl implements ProductService {
 
         product.setStatus(status);
         product.getVariants().forEach(v -> v.setStatus(status));
+        product.setUpdatedAt(Instant.now());
 
         productRepository.save(product);
     }
@@ -364,6 +408,7 @@ public class ProductServiceImpl implements ProductService {
                         .product(product)
                         .build());
             }
+            product.setUpdatedAt(Instant.now());
             productRepository.save(product);
         }
     }
@@ -374,7 +419,7 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
-        boolean removed = product.getProductImages().removeIf(img -> img.getId().equals(imageId));
+        boolean removed = product.getProductImages().removeIf(img -> Objects.equals(img.getId(), imageId));
         if (!removed) {
             throw new ResourceNotFoundException("Image not found");
         }
@@ -385,6 +430,7 @@ public class ProductServiceImpl implements ProductService {
             product.getProductImages().getFirst().setIsPrimary(true);
         }
 
+        product.setUpdatedAt(Instant.now());
         productRepository.save(product);
     }
 
@@ -395,11 +441,20 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         ProductImage target = product.getProductImages().stream()
-                .filter(img -> img.getId().equals(imageId))
+                .filter(img -> Objects.equals(img.getId(), imageId))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Image not found"));
 
+        boolean alreadySolePrimary = Boolean.TRUE.equals(target.getIsPrimary())
+                && product.getProductImages().stream()
+                .filter(img -> img != target)
+                .noneMatch(img -> Boolean.TRUE.equals(img.getIsPrimary()));
+        if (alreadySolePrimary) {
+            return;
+        }
+
         product.getProductImages().forEach(img -> img.setIsPrimary(img == target));
+        product.setUpdatedAt(Instant.now());
         productRepository.save(product);
     }
 
@@ -410,11 +465,35 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         ProductVariant variant = product.getVariants().stream()
-                .filter(v -> v.getId().equals(variantId))
+                .filter(v -> Objects.equals(v.getId(), variantId))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Variant not found"));
 
+        if (variant.getStatus() == ProductStatus.INACTIVE) {
+            return;
+        }
+
         variant.setStatus(ProductStatus.INACTIVE);
+        product.setUpdatedAt(Instant.now());
         productRepository.save(product);
+    }
+
+    private boolean isBigDecimalEqual(BigDecimal left, BigDecimal right) {
+        if (left == right) {
+            return true;
+        }
+        if (left == null || right == null) {
+            return false;
+        }
+        return left.compareTo(right) == 0;
+    }
+
+    private boolean isMapEqual(Map<String, Object> left, Map<String, Object> right) {
+        boolean leftEmpty = left == null || left.isEmpty();
+        boolean rightEmpty = right == null || right.isEmpty();
+        if (leftEmpty && rightEmpty) {
+            return true;
+        }
+        return Objects.equals(left, right);
     }
 }
