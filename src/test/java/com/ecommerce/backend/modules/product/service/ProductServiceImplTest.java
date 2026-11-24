@@ -449,7 +449,7 @@ class ProductServiceImplTest {
             productService.changeProductStatus(100L, ProductStatus.INACTIVE);
 
             assertThat(testProduct.getStatus()).isEqualTo(ProductStatus.INACTIVE);
-            assertThat(variant.getStatus()).isEqualTo(ProductStatus.INACTIVE);
+            assertThat(variant.getStatus()).isEqualTo(ProductStatus.ACTIVE);
             assertThat(testProduct.getUpdatedAt()).isAfter(INITIAL_UPDATED_AT);
             verify(productRepository, times(1)).save(testProduct);
         }

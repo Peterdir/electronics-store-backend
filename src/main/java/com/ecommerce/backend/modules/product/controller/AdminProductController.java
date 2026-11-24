@@ -109,6 +109,17 @@ public class AdminProductController {
         return ResponseEntity.ok("Primary image updated successfully.");
     }
 
+    @PatchMapping("/{id}/variants/{variantId}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ResponseEntity<String> changeProductVariantStatus(
+            @PathVariable Long id,
+            @PathVariable Long variantId,
+            @RequestParam ProductStatus status) {
+
+        productService.changeProductVariantStatus(id, variantId, status);
+        return ResponseEntity.ok("Product variant status updated to " + status + ".");
+    }
+
     @DeleteMapping("/{id}/variants/{variantId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<String> deleteProductVariant(

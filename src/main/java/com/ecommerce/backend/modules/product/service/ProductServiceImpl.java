@@ -222,7 +222,6 @@ public class ProductServiceImpl implements ProductService {
         }
 
         product.setStatus(status);
-        product.getVariants().forEach(v -> v.setStatus(status));
         product.setUpdatedAt(Instant.now());
 
         productRepository.save(product);
@@ -461,19 +460,28 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void deleteProductVariant(Long productId, Long variantId) {
+        changeProductVariantStatus(productId, variantId, ProductStatus.INACTIVE);
+    }
+
+    @Override
+    @Transactional
+    public void changeProductVariantStatus(Long productId, Long variantId, ProductStatus status) {
+        if (status != ProductStatus.ACTIVE && status != ProductStatus.INACTIVE) {
+            throw new BadRequestException("Variant status must be ACTIVE or INACTIVE.");
+        }
+
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
-
         ProductVariant variant = product.getVariants().stream()
                 .filter(v -> Objects.equals(v.getId(), variantId))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Variant not found"));
 
-        if (variant.getStatus() == ProductStatus.INACTIVE) {
+        if (variant.getStatus() == status) {
             return;
         }
 
-        variant.setStatus(ProductStatus.INACTIVE);
+        variant.setStatus(status);
         product.setUpdatedAt(Instant.now());
         productRepository.save(product);
     }

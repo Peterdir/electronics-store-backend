@@ -40,4 +40,6 @@ public interface ProductService {
     void setPrimaryProductImage(Long productId, Long imageId);
 
     void deleteProductVariant(Long productId, Long variantId);
+
+    void changeProductVariantStatus(Long productId, Long variantId, ProductStatus status);
 }
