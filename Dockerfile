@@ -11,7 +11,7 @@ FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 COPY --from=build /app/target/*.jar /app/app.jar
-COPY uploads ./uploads
+RUN mkdir -p /app/uploads
 
 EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
