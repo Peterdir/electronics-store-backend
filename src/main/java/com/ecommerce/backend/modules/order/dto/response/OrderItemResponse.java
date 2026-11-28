@@ -27,5 +27,6 @@ public class OrderItemResponse {
     private Integer quantity;
 
     private BigDecimal subtotal;
+
     private ReturnStatus returnStatus;
 }
