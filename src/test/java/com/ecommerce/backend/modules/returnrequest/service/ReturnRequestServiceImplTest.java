@@ -1,21 +1,28 @@
 package com.ecommerce.backend.modules.returnrequest.service;
 
 import com.ecommerce.backend.common.exception.BadRequestException;
+import com.ecommerce.backend.common.exception.DuplicateResourceException;
+import com.ecommerce.backend.common.exception.ResourceNotFoundException;
 import com.ecommerce.backend.common.service.FileStorageService;
 import com.ecommerce.backend.modules.auth.entity.User;
 import com.ecommerce.backend.modules.auth.repository.UserRepository;
+import com.ecommerce.backend.modules.inventory.entity.Inventory;
 import com.ecommerce.backend.modules.order.entity.Order;
 import com.ecommerce.backend.modules.order.entity.OrderItem;
 import com.ecommerce.backend.modules.order.enums.OrderStatus;
 import com.ecommerce.backend.modules.order.repository.OrderItemRepository;
 import com.ecommerce.backend.modules.order.repository.OrderRepository;
+import com.ecommerce.backend.modules.product.entity.ProductVariant;
 import com.ecommerce.backend.modules.returnrequest.dto.request.ReturnRequestProcessRequest;
 import com.ecommerce.backend.modules.returnrequest.dto.request.ReturnRequestCreateRequest;
+import com.ecommerce.backend.modules.returnrequest.dto.response.ReturnRequestResponse;
 import com.ecommerce.backend.modules.returnrequest.entity.ReturnRequest;
 import com.ecommerce.backend.modules.returnrequest.enums.ReturnStatus;
 import com.ecommerce.backend.modules.returnrequest.mapper.ReturnRequestMapper;
 import com.ecommerce.backend.modules.returnrequest.repository.ReturnRequestRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -24,7 +31,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
@@ -191,5 +203,165 @@ class ReturnRequestServiceImplTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         var response = service.createReturnRequest(1L, request(reason, List.of(image)));
         assertThat(response.getImageUrls()).containsExactly("/uploads/returns/proof.png");
+    }
+
+    @Nested
+    @DisplayName("Create Return Request Validation Tests")
+    class CreateReturnRequestValidationTests {
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when user, orderItem, or order is missing")
+        void createReturnRequest_MissingEntities_ThrowsResourceNotFound() {
+            when(userRepository.findById(99L)).thenReturn(Optional.empty());
+            assertThrows(ResourceNotFoundException.class,
+                    () -> service.createReturnRequest(99L, request("Lý do khác", null)));
+
+            when(orderItemRepository.findById(999L)).thenReturn(Optional.empty());
+            ReturnRequestCreateRequest missingItemReq = request("Lý do khác", null);
+            missingItemReq.setOrderItemId(999L);
+            assertThrows(ResourceNotFoundException.class,
+                    () -> service.createReturnRequest(1L, missingItemReq));
+
+            when(orderRepository.findByIdForUpdate(10L)).thenReturn(Optional.empty());
+            assertThrows(ResourceNotFoundException.class,
+                    () -> service.createReturnRequest(1L, request("Lý do khác", null)));
+        }
+
+        @Test
+        @DisplayName("Should throw AccessDeniedException when order user does not match authenticated user")
+        void createReturnRequest_OrderOwnedByOtherUser_ThrowsAccessDenied() {
+            User another = User.builder().id(2L).build();
+            when(userRepository.findById(2L)).thenReturn(Optional.of(another));
+            assertThrows(AccessDeniedException.class,
+                    () -> service.createReturnRequest(2L, request("Lý do khác", null)));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"PENDING", "PROCESSING", "SHIPPED", "CANCELLED"})
+        @DisplayName("Should reject return request when order has not been delivered")
+        void createReturnRequest_UndeliveredOrder_ThrowsBadRequest(String status) {
+            Order order = orderRepository.findByIdForUpdate(10L).orElseThrow();
+            order.setOrderStatus(OrderStatus.valueOf(status));
+
+            assertThrows(BadRequestException.class,
+                    () -> service.createReturnRequest(1L, request("Lý do khác", null)));
+            verify(returnRequestRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should reject when order status is null, quantity exceeds purchased, or duplicate exists")
+        void createReturnRequest_InvalidQuantityOrDuplicate_ThrowsExpectedExceptions() {
+            Order order = orderRepository.findByIdForUpdate(10L).orElseThrow();
+            order.setOrderStatus(null);
+            assertThrows(BadRequestException.class,
+                    () -> service.createReturnRequest(1L, request("Lý do khác", null)));
+
+            order.setOrderStatus(OrderStatus.DELIVERED);
+            ReturnRequestCreateRequest overQty = request("Lý do khác", null);
+            overQty.setQuantity(5);
+            assertThrows(BadRequestException.class,
+                    () -> service.createReturnRequest(1L, overQty));
+
+            when(returnRequestRepository.existsByOrderItemId(100L)).thenReturn(true);
+            assertThrows(DuplicateResourceException.class,
+                    () -> service.createReturnRequest(1L, request("Lý do khác", null)));
+        }
+    }
+
+    @Nested
+    @DisplayName("Admin Get & Process Return Request Tests")
+    class AdminReturnRequestTests {
+
+        @Test
+        @DisplayName("Should query return requests by status with descending createdAt sort")
+        void getReturnRequestsByStatus_ReturnsMappedPage() {
+            Order order = orderRepository.findByIdForUpdate(10L).orElseThrow();
+            OrderItem item = orderItemRepository.findById(100L).orElseThrow();
+            ReturnRequest entity = ReturnRequest.builder()
+                    .id(500L)
+                    .order(order)
+                    .orderItem(item)
+                    .quantity(1)
+                    .reason("Lý do khác")
+                    .status(ReturnStatus.PENDING)
+                    .build();
+
+            PageRequest expectedPageable = PageRequest.of(0, 10, Sort.by("createdAt").descending());
+            when(returnRequestRepository.findByStatus(ReturnStatus.PENDING, expectedPageable))
+                    .thenReturn(new PageImpl<>(List.of(entity), expectedPageable, 1));
+
+            Page<ReturnRequestResponse> page = service.getReturnRequestsByStatus(ReturnStatus.PENDING, 0, 10);
+
+            assertThat(page.getTotalElements()).isEqualTo(1);
+            assertThat(page.getContent().get(0).getId()).isEqualTo(500L);
+            assertThat(page.getContent().get(0).getStatus()).isEqualTo(ReturnStatus.PENDING);
+        }
+
+        @Test
+        @DisplayName("Should approve return request, restock inventory, and mark order RETURNED")
+        void processReturnRequest_Approve_RestocksInventoryAndUpdatesOrder() {
+            Order order = orderRepository.findByIdForUpdate(10L).orElseThrow();
+            order.setOrderStatus(OrderStatus.RETURN_REQUESTED);
+
+            Inventory inventory = Inventory.builder().id(300L).quantity(5L).build();
+            ProductVariant variant = ProductVariant.builder().id(400L).inventory(inventory).build();
+            OrderItem item = orderItemRepository.findById(100L).orElseThrow();
+            item.setProductVariant(variant);
+
+            ReturnRequest req = ReturnRequest.builder()
+                    .id(200L)
+                    .order(order)
+                    .orderItem(item)
+                    .quantity(2)
+                    .status(ReturnStatus.PENDING)
+                    .build();
+            order.getReturnRequests().add(req);
+
+            when(returnRequestRepository.findByIdForUpdate(200L)).thenReturn(Optional.of(req));
+            when(returnRequestRepository.save(any(ReturnRequest.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            ReturnRequestProcessRequest decision = new ReturnRequestProcessRequest();
+            decision.setStatus(ReturnStatus.APPROVED);
+
+            ReturnRequestResponse response = service.processReturnRequest(200L, decision);
+
+            assertThat(response.getStatus()).isEqualTo(ReturnStatus.APPROVED);
+            assertThat(inventory.getQuantity()).isEqualTo(7L);
+            assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.RETURNED);
+        }
+
+        @Test
+        @DisplayName("Should throw expected exceptions for missing entities, blank rejectReason, or invalid status")
+        void processReturnRequest_InvalidCases_ThrowExpectedExceptions() {
+            when(returnRequestRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
+            ReturnRequestProcessRequest approve = new ReturnRequestProcessRequest();
+            approve.setStatus(ReturnStatus.APPROVED);
+            assertThrows(ResourceNotFoundException.class, () -> service.processReturnRequest(999L, approve));
+
+            Order order = orderRepository.findByIdForUpdate(10L).orElseThrow();
+            ReturnRequest pending = ReturnRequest.builder()
+                    .id(200L)
+                    .order(order)
+                    .status(ReturnStatus.PENDING)
+                    .build();
+            when(returnRequestRepository.findByIdForUpdate(200L)).thenReturn(Optional.of(pending));
+
+            // Order không tìm thấy
+            when(orderRepository.findByIdForUpdate(10L)).thenReturn(Optional.empty());
+            assertThrows(ResourceNotFoundException.class, () -> service.processReturnRequest(200L, approve));
+
+            // Từ chối thiếu lý do
+            when(orderRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(order));
+            ReturnRequestProcessRequest blankReject = new ReturnRequestProcessRequest();
+            blankReject.setStatus(ReturnStatus.REJECTED);
+            blankReject.setRejectReason("   ");
+            assertThrows(BadRequestException.class, () -> service.processReturnRequest(200L, blankReject));
+
+            // Trạng thái không hợp lệ (PENDING hoặc null)
+            ReturnRequestProcessRequest invalidStatus = new ReturnRequestProcessRequest();
+            invalidStatus.setStatus(ReturnStatus.PENDING);
+            assertThrows(BadRequestException.class, () -> service.processReturnRequest(200L, invalidStatus));
+        }
     }
 }
